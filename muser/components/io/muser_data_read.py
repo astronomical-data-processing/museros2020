@@ -69,6 +69,10 @@ class MuserDataReader(MuserData):
 
         # muserRawData Class
 
+    def __del__(self):
+        if self.in_file is not None:
+            self.close_file()
+
     def get_data_info(self, start_time, end_time, integral_period, realtime=False):
         s_time = Time(start_time,format='isot', scale='utc')
         self.set_data_date_time(s_time)

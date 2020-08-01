@@ -54,7 +54,7 @@ spectral_mode           Visibility processing mode          'mfs' or 'channel'
 """
 
 __all__ = ['muser_path', 'muser_data_path', 'get_parameter', 'IF_BANDWIDTH', 'LOOP_MODE_LOW', 'NON_LOOP_MODE_LOW',
-           'LOOP_MODE_HIGH']
+           'LOOP_MODE_HIGH','NON_LOOP_MODE_HIGH']
 
 import logging
 import os
@@ -151,7 +151,6 @@ def muser_data_path(path=None, check=True):
             raise EnvironmentError("MUSER data directory {} does not exist".format(dp))
     dp = os.path.join(dp, path)
     return dp
-
 
 def get_parameter(kwargs, key, default=None):
     """ Get a specified named value for this (calling) function

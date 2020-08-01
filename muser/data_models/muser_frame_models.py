@@ -12,7 +12,11 @@ import math
 import struct
 
 from muser.data_models.muser_data_models import MuserBase, MuserFrameHeader
-from muser.data_models.parameters import IF_BANDWIDTH,LOOP_MODE_LOW, NON_LOOP_MODE_LOW,LOOP_MODE_HIGH
+from muser.data_models.parameters import IF_BANDWIDTH, LOOP_MODE_LOW, NON_LOOP_MODE_LOW, NON_LOOP_MODE_HIGH, \
+    LOOP_MODE_HIGH
+from astropy.time import Time, TimezoneInfo
+import astropy.units as u
+from muser.data_models.parameters import muser_path, muser_data_path
 
 log = logging.getLogger('muser')
 
@@ -22,6 +26,12 @@ pi = math.pi
 
 class MuserFrame(MuserBase):
     def __init__(self, sub_array=1):
+        '''Construction Function
+
+        :param sub_array 1-Muser1, 2-Muser2
+        :return
+        '''
+
         super(MuserFrame, self).__init__()
         # public member
         self.real_sub_array = 0
@@ -64,7 +74,47 @@ class MuserFrame(MuserBase):
         self.if_read_first_frame_time = False
         self.set_array(sub_array)
 
-        self.read_number =0
+        self.read_number = 0
+
+    # @property
+    # def frequency(self):
+    #     return self.frequency
+    #
+    # @property
+    # def polarization(self):
+    #     return self.polarization
+    #
+    # @property
+    # def obs_time(self):
+    #     return self.current_frame_time
+    #
+    # @property
+    # def filename(self):
+    #     return self.filename
+    #
+    # @filename.setter
+    # def filename(self, file_name):
+    #     self.filename = file_name
+    #
+    # @property
+    # def sub_band(self):
+    #     return self.sub_band
+    #
+    # @property
+    # def obs_target(self):
+    #     return self.obs_target
+    #
+    # @property
+    # def loop_mode(self):
+    #     return self.is_loop_mode
+    #
+    # @property
+    # def array(self):
+    #     return self.sub_array
+    #
+    # @array.setter
+    # def array(self, array):
+    #     self.set_array(array)
 
     def set_array(self, sub_array=1):
         '''
@@ -79,27 +129,28 @@ class MuserFrame(MuserBase):
             return False
 
         self.sub_channels, self.antennas, self.dr_output_antennas, self.frame_number, self.polarization_number = \
-            muser_para[
-                self.sub_array - 1]
-        if self.debug:
-            log.debug('Array: muser-%d: antennas:%d, frame: %d, polarization:%d' % (self.sub_array,
-                                                                                       self.antennas, self.frame_number,
-                                                                                       self.polarization_number))
+            muser_para[self.sub_array - 1]
 
-        self.uvws_sum = numpy.ndarray(shape=((self.antennas * (self.antennas - 1) // 2), 3), dtype=float)
+        log.debug('Array: muser-%d: antennas:%d, frame: %d, polarization:%d' % (self.sub_array,
+                                                                                self.antennas, self.frame_number,
+                                                                                self.polarization_number))
 
-        self.baseline_data = numpy.ndarray(
+        self.uvws_sum = numpy.zeros(shape=((self.antennas * (self.antennas - 1) // 2), 3), dtype=float)
+
+        self.baseline_data = numpy.zeros(
             shape=(self.antennas * (self.antennas - 1) // 2, self.sub_channels),
             dtype=complex)
-        self.baseline_data_flag = numpy.ndarray(
+        self.baseline_data_flag = numpy.zeros(
             shape=(self.antennas * (self.antennas - 1) // 2, self.sub_channels),
             dtype=int)
 
-        self.position_data = numpy.ndarray(shape=(self.sub_channels, self.dr_output_antennas, self.dr_output_antennas),
-                                        dtype=float)
-        self.correlation_data = numpy.ndarray(shape=(self.sub_channels, self.dr_output_antennas, self.dr_output_antennas),
+        self.position_data = numpy.zeros(shape=(self.sub_channels, self.dr_output_antennas, self.dr_output_antennas),
                                            dtype=float)
-        self.auto_correlation_data = numpy.ndarray(shape=(self.sub_channels, self.dr_output_antennas), dtype=float)
+        self.correlation_data = numpy.zeros(
+            shape=(self.sub_channels, self.dr_output_antennas, self.dr_output_antennas),
+            dtype=float)
+
+        self.auto_correlation_data = numpy.zeros(shape=(self.sub_channels, self.dr_output_antennas), dtype=float)
 
         self.par_delay = numpy.ndarray(shape=(self.dr_output_antennas), dtype=float)
 
@@ -143,7 +194,7 @@ class MuserFrame(MuserBase):
         offset = [100000, 204800]
         pos = self.in_file.tell()
         if pos > 0:
-            if pos % offset[self.sub_array -1] !=0:
+            if pos % offset[self.sub_array - 1] != 0:
                 self.in_file.seek(((pos // offset[self.sub_array - 1]) + 1) * offset[self.sub_array - 1])
         self.in_file.seek(32, 1)
         if self.debug:
@@ -166,7 +217,7 @@ class MuserFrame(MuserBase):
     def skip_frames(self, number_of_frames):
         offset = [100000, 204800]
         pos = self.in_file.tell()
-        if pos > 0 and ( pos % offset[self.sub_array - 1] !=0):
+        if pos > 0 and (pos % offset[self.sub_array - 1] != 0):
             self.in_file.seek((pos // offset[self.sub_array - 1]) * offset[self.sub_array - 1])
 
         self.in_file.seek(offset[self.sub_array - 1] * number_of_frames, 1)
@@ -174,12 +225,12 @@ class MuserFrame(MuserBase):
             log.debug('Skip %d frames' % (number_of_frames))
         return True
 
-    def read_one_frame(self, search = True):
+    def read_one_frame(self, search=True):
         if search == True:
             if (self.search_frame_header() == False):
-                if self.debug: log.error('Cannot find a correct header information.')
+                log.error('Cannot find a correct header information.')
                 return False
-        if search == False:
+        else:
             self.in_file.seek(32, 1)
         tmp = self.in_file.read(8)
         tmp_time = struct.unpack('Q', tmp)[0]
@@ -189,33 +240,25 @@ class MuserFrame(MuserBase):
         if self.debug:
             log.debug("Read frame date and time: %s " % self.current_frame_time.get_string())
 
-        self.current_frame_date_time = self.current_frame_time.get_date_time()  # self.get_frame_datetime()
+        self.current_frame_date_time = self.current_frame_time
         if self.if_read_first_frame_time == False:
-            self.first_frame_time.copy(self.current_frame_time)
+            self.first_frame_time = self.current_frame_time
             self.if_read_first_frame_time = True
 
-        obs_time = ('%4d-%02d-%02d %02d:%02d:%02d') % (
-            self.current_frame_time.year, self.current_frame_time.month, self.current_frame_time.day,
-            self.current_frame_time.hour, self.current_frame_time.minute, self.current_frame_time.second)
+        obs_time = self.current_frame_time.isot
 
         # self.current_frame_time.millisecond*1e3+self.current_frame_time.microsecond)
 
         # the date and time are beijing time of china, utc = cst - 8
         # utc = cst - 8
-        self.current_frame_utc_time.copy(self.current_frame_time)
-        self.current_frame_utc_time.set_with_date_time(
-            self.current_frame_utc_time.get_date_time() + datetime.timedelta(hours=-8))
+        self.current_frame_utc_time = self.current_frame_time - 8 * u.hour
 
         # print "observaton time(utc):", date
 
-        self.obs_date = ('%4d-%02d-%02d') % (
-            self.current_frame_utc_time.year, self.current_frame_utc_time.month, self.current_frame_utc_time.day)
-        self.obs_time = ('%02d:%02d:%02d.%03d%03d%03d') % (
-            self.current_frame_utc_time.hour, self.current_frame_utc_time.minute, self.current_frame_utc_time.second,
-            self.current_frame_utc_time.millisecond, self.current_frame_utc_time.microsecond,
-            self.current_frame_utc_time.nanosecond)
+        self.obs_date = self.current_frame_utc_time.isot
+        self.obs_time = self.current_frame_utc_time.isot
 
-        if (self.current_frame_utc_time.year < 2015):
+        if (self.current_frame_utc_time < Time('2015-01-01', format='isot')):
             self.version = False
         else:
             self.version = True
@@ -237,31 +280,31 @@ class MuserFrame(MuserBase):
                 self.polarization = 1
         else:
             self.polarization = (self.read_number % 2)
-            self.read_number = self.read_number +1
+            self.read_number = self.read_number + 1
         self.sub_band_switch = self.current_frame_header.sub_band_switch >> 16  # Sub_band frequency
         self.is_loop_mode = False
 
         if self.sub_array == 1:
             # We have to support two types of files
-            if self.version==False:
-                if self.sub_band_switch in [ 0x3333, 0x7777, 0xbbbb, 0xcccc]:
+            if self.version == False:
+                if self.sub_band_switch in [0x3333, 0x7777, 0xbbbb, 0xcccc]:
                     self.channel_group = NON_LOOP_MODE_LOW[self.sub_band_switch][0]
                     self.frequency = NON_LOOP_MODE_LOW[self.sub_band_switch][1]
                     self.freqid = NON_LOOP_MODE_LOW[self.sub_band_switch][2]
 
                     self.numrows = 1
-                    self.groups = 60*1000/25*8*(self.antennas * (self.antennas - 1) // 2)
-                    self.source_rows = 60*1000/25*8/2
+                    self.groups = 60 * 1000 / 25 * 8 * (self.antennas * (self.antennas - 1) // 2)
+                    self.source_rows = 60 * 1000 / 25 * 8 / 2
 
                 else:
                     self.is_loop_mode = True
 
-                    self.numrows =4
-                    self.groups = 60*1000/25*8*(self.antennas * (self.antennas - 1) // 2)/2
-                    self.source_rows = 60*1000/25*8
+                    self.numrows = 4
+                    self.groups = 60 * 1000 / 25 * 8 * (self.antennas * (self.antennas - 1) // 2) / 2
+                    self.source_rows = 60 * 1000 / 25 * 8
 
                     # In loop mode, we should read another two bytes in absolute offset: 99264
-                    # We have read 192 bytes. So, we shoudl foward 99264-192  bytes
+                    # We have read 192 bytes. So, we need to further move forward 99264-192  bytes
                     # 0000,5555,AAAA,FFFF 0.4-0.8GHZ 0.8~1.2GHz 1.2~1.6GHz 1.6~2.0GHz
                     self.in_file.seek(99264 - 192, 1)
                     self.sub_band_switch = struct.unpack('H', self.in_file.read(2))[0]
@@ -283,7 +326,7 @@ class MuserFrame(MuserBase):
                         self.freqid = 4
                     self.in_file.seek(-(99264 - 192 + 2), 1)
             else:
-                if self.NON_LOOP_MODE_LOW.has_key(self.sub_band_switch):
+                if self.sub_band_switch in NON_LOOP_MODE_LOW:
                     self.channel_group = NON_LOOP_MODE_LOW[self.sub_band_switch][0]
                     self.frequency = NON_LOOP_MODE_LOW[self.sub_band_switch][1]
                     self.freqid = NON_LOOP_MODE_LOW[self.sub_band_switch][2]
@@ -299,14 +342,13 @@ class MuserFrame(MuserBase):
                     self.channel_group = LOOP_MODE_LOW[self.current_frame_header.sub_band_switch][1]
                     self.frequency = LOOP_MODE_LOW[self.current_frame_header.sub_band_switch][2]
                     self.freqid = LOOP_MODE_LOW[self.current_frame_header.sub_band_switch][3]
-                    # print "freqid:", self.freqid
                     self.in_file.seek(-17, 1)
                 self.sub_band = self.channel_group // 16
 
         elif self.sub_array == 2:
-            if self.NON_LOOP_MODE_HIGH.has_key(self.sub_band_switch):  # Sub_band frequency
-                if not self.NON_LOOP_MODE_HIGH.has_key(self.sub_band_switch):
-                        self.sub_band_switch = 0
+            if self.sub_band_switch in NON_LOOP_MODE_HIGH:  # Sub_band frequency
+                if self.sub_band_switch not in NON_LOOP_MODE_HIGH:
+                    self.sub_band_switch = 0
                 self.channel_group = NON_LOOP_MODE_HIGH[self.sub_band_switch][0]
                 self.frequency = NON_LOOP_MODE_HIGH[self.sub_band_switch][1]
                 self.freqid = NON_LOOP_MODE_HIGH[self.sub_band_switch][2]
@@ -322,7 +364,7 @@ class MuserFrame(MuserBase):
 
         self.sub_band = self.channel_group // 16
 
-        if self.version==True:
+        if self.version == True:
             obs_target = struct.unpack('H', self.in_file.read(2))[0]  # calibration source
             if obs_target == 0x0000:
                 self.obs_target = "sun"
@@ -345,19 +387,14 @@ class MuserFrame(MuserBase):
             self.obs_target = "sun"
             self.real_sub_array = self.sub_array
 
-        if self.debug:
-            log.debug(
-                'Read header info - time: %04d-%02d-%02d %02d:%02d:%02d %03d%03d%03d - array:%d band:%d polization:%d frequence:%d' % (
-                    self.current_frame_time.year, self.current_frame_time.month, self.current_frame_time.day,
-                    self.current_frame_time.hour, self.current_frame_time.minute, self.current_frame_time.second,
-                    self.current_frame_time.millisecond, self.current_frame_time.microsecond,
-                    self.current_frame_time.nanosecond, self.real_sub_array, self.sub_band, self.polarization,
-                    self.frequency))
+        log.debug(
+            'Read header info - time: %s - array:%d band:%d polization:%d frequence:%d' % (
+                self.current_frame_time.isot, self.real_sub_array, self.sub_band, self.polarization,
+                self.frequency))
 
     def read_data(self):
         if self.sub_array == 1:
-            if self.debug:
-                log.debug('Read data current pos %d' % self.in_file.tell())
+            log.debug('Read data current pos %d' % self.in_file.tell())
             self.in_file.seek(2752, 1)
 
             for channel in range(0, self.sub_channels, 2):
@@ -380,14 +417,13 @@ class MuserFrame(MuserBase):
                             # if channel==8:
                             #     a = ('%3d%5d%5d  %20.5f %20.5f\n')%(channel, antenna1, antenna2, self.baseline_data[bl][channel].real,self.baseline_data[bl][channel].imag)
                             #     b = ('%3d%5d%5d  %20.5f %20.5f\n')%(channel+1, antenna1, antenna2, self.baseline_data[bl][channel+1].real,self.baseline_data[bl][channel+1].imag)
-                            #
-                            #     print a
+                            #     print(a)
                             #     file1.writelines(a)
                             #     file1.writelines(b)
 
                             bl = bl + 1
 
-                    #print csrh.par_Delay
+                    # print csrh.par_Delay
                 # file1.close()
 
                 self.in_file.seek(40, 1)
@@ -418,7 +454,7 @@ class MuserFrame(MuserBase):
                     # if channel==4 and antenna ==0:
                     #       print self.auto_correlation_data[channel][antenna]
 
-                    if channel == self.sub_channels - 2 :
+                    if channel == self.sub_channels - 2:
                         self.in_file.seek(-24, 1)
                         buff = self.in_file.read(16)
                         (self.par_delay[antenna], self.par_delay[antenna + 1], self.par_delay[antenna + 2],
@@ -429,10 +465,10 @@ class MuserFrame(MuserBase):
                 self.in_file.seek(32, 1)
 
         elif self.sub_array == 2:
-            self.in_file.seek(1692, 1) # 1690 reserve and 2bytes frequency code
-            visbility = numpy.ndarray(shape=(self.dr_output_antennas * (self.dr_output_antennas - 1) / 2),
-                                   dtype=complex)
-            for channel in range(0, self.sub_channels): # read data of all antennas in one channel
+            self.in_file.seek(1692, 1)  # 1690 reserve and 2bytes frequency code
+            visbility = numpy.zeros(shape=(self.dr_output_antennas * (self.dr_output_antennas - 1) / 2),
+                                      dtype=complex)
+            for channel in range(0, self.sub_channels):  # read data of all antennas in one channel
                 for bl_len in range(0, self.dr_output_antennas * (self.dr_output_antennas - 1) / 2, 2):
                     buff = self.in_file.read(12)
                     c1, c2 = self.convert_cross_correlation(buff)
@@ -440,7 +476,7 @@ class MuserFrame(MuserBase):
                     visbility[bl_len + 1] = c1
 
                 bl1, bl2 = 0, 0
-                for antenna1 in range(0, self.antennas-1):
+                for antenna1 in range(0, self.antennas - 1):
                     for antenna2 in range(antenna1 + 1, self.dr_output_antennas):
                         if antenna2 < self.antennas:
                             self.baseline_data[bl1][channel] = visbility[bl2]  # write data to baseline_data
@@ -481,16 +517,15 @@ class MuserFrame(MuserBase):
                         self.in_file.seek(8, 1)
                 self.in_file.seek(72, 1)
 
-        if self.debug:
-            log.debug("Read visibility  and auto correlation data.")
+
+        log.debug("Read visibility  and auto correlation data.")
         return True
 
-    def read_one_file(self): # data in the same channe: 780*2400
+    def read_one_file(self):  # data in the same channe: 780*2400
         if self.search_first_frame() == False:
             log.error("Cannot find observational data.")
             return str(False), []
         self.seek_frame_header()
-
 
     def delay_process(self, planet):
         # print "delay processing..."
@@ -502,20 +537,21 @@ class MuserFrame(MuserBase):
                 parameter = 12.5
             elif planet == 'satellite':
                 parameter = 2.5
-            delayns = self.delay_compensation.get_delay_value(self.sub_array, self.current_frame_time.get_short_string())
-            delay = self.par_delay*(10**9) - delayns
-        else: # muser-2
+            delayns = self.delay_compensation.get_delay_value(self.sub_array,
+                                                              self.current_frame_time.get_short_string())
+            delay = self.par_delay * (10 ** 9) - delayns
+        else:  # muser-2
             parameter = 12.5
             delay = self.par_delay
 
         for channel in range(0, self.sub_channels):
             bl = 0
-            for antenna1 in range(0, self.antennas - 1):  #SubChannelsLow = 16
+            for antenna1 in range(0, self.antennas - 1):  # SubChannelsLow = 16
                 for antenna2 in range(antenna1 + 1, self.antennas):
                     tg = delay[antenna2] - delay[antenna1]
                     tg0 = int(delay[antenna2]) - int(delay[antenna1])
                     if self.sub_array == 1:
-                        Frf = (self.frequency*1e-6 + channel * 25 + parameter) / 1000.0
+                        Frf = (self.frequency * 1e-6 + channel * 25 + parameter) / 1000.0
                         Fif = (channel * 25 + parameter + 50.0) / 1000.0
                         phai = 2 * pi * (Frf * tg - Fif * tg0)
                         self.baseline_data[bl][channel] = complex(
@@ -524,18 +560,15 @@ class MuserFrame(MuserBase):
                             self.baseline_data[bl][channel].imag * math.cos(phai) -
                             self.baseline_data[bl][channel].real * math.sin(phai))
                     else:
-                        Frf = (self.frequency*1e-6 + (15- channel) * 25 + parameter) / 1000.0
+                        Frf = (self.frequency * 1e-6 + (15 - channel) * 25 + parameter) / 1000.0
                         Fif = (channel * 25 + parameter + 50.0) / 1000.0  # local frequency(GHz)
                         phai = 2 * pi * (-Frf * tg - Fif * tg0)
                         # phai = 2 * pi * Fif * tg0 + 2 * pi * Frf * (tg - tg0)
                         self.baseline_data[bl][channel] = complex(
                             self.baseline_data[bl][channel].real * math.cos(phai) +
                             self.baseline_data[bl][channel].imag * math.sin(phai),
-                            self.baseline_data[bl][channel].imag*(-1) * math.cos(phai) +
+                            self.baseline_data[bl][channel].imag * (-1) * math.cos(phai) +
                             self.baseline_data[bl][channel].real * math.sin(phai))
                     bl = bl + 1
 
-        if self.debug:
-            log.debug("Delay Process and fringe stopping... Done.")
-
-
+        log.debug("Delay Process and fringe stopping... Done.")

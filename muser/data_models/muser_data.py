@@ -10,13 +10,13 @@ from astropy.time import Time
 # from muserenv import *
 import numpy
 import logging
-
+from muser.data_models.parameters import muser_path, muser_data_path
 
 log = logging.getLogger('muser')
 
 
 class MuserData(MuserFrame):
-    def __init__(self, sub_array=1, file_name = None):
+    def __init__(self, sub_array=1, file_name=None):
 
         super(MuserData, self).__init__(sub_array=1)
 
@@ -29,13 +29,14 @@ class MuserData(MuserFrame):
         self.last_sub_array = -1
 
         self.current_file_name = file_name
+        self.filename = file_name
 
         # self.start_date_time = MuserTime()
         # self.first_date_time = MuserTime()
 
-    @property
-    def filename(self,name):
-        self.input_file_name = name
+    # @property
+    # def filename(self, name):
+    #     self.filename = name
 
     def set_data_date_time(self, time):
         self.start_date_time = time
@@ -47,7 +48,18 @@ class MuserData(MuserFrame):
     def set_priority(self, priority):
         self.calibration_priority = priority
 
-    def search_first_file(self, file_name = ''):
+    def get_info(self):
+        """Get Muser Data File Information
+
+        """
+        if self.filename is None or len(self.filename.strip()) == 0:
+            return False
+        if self.in_file.closed:
+            if self.open_data_file() == False:
+                return False
+
+
+    def check_muser_file(self, file_name=None):
         '''
         search the first file of processing
         '''
@@ -55,60 +67,54 @@ class MuserData(MuserFrame):
             log.error("Cannot open observational data.")
             return False
 
-        # Read first frame and check the observational date and time
+        # Read first frame and check the observational date and tim  e
         if self.read_one_frame() == False:
             log.error("Cannot read a frame.")
             return False
 
-        if self.input_file_name != '' and self.start_date_time.year == 1970:  # Start!!!
+        if self.filename != '':  # Start!!!
             self.start_date_time = self.current_frame_time
 
         # The date and time in the first frame should be
-        if self.current_frame_time.get_second() == 0 and (
-                self.current_frame_time.get_millisecond() * 1e3 + self.current_frame_time.get_microsecond() < 312500):
+        if self.current_frame_time.datetime.second == 0 and (self.current_frame_time.datetime.microsecond < 312500):
             return True
 
-        if self.start_date_time.get_date_time() < self.current_frame_time.get_date_time():
+        if self.start_date_time < self.current_frame_time:
             # previous 1 minute
-            if self.debug:
-                log.debug("Change observational file.")
+            log.debug("Change observational file.")
             if self.open_next_file(-1) == False:
                 return False
             # Read first frame and check the observational date and time
             if self.read_one_frame() == False:
                 self.in_file.close()
                 return False
-            if self.debug:
-                log.debug("Find data file: %s" % (os.path.basename(self.current_file_name)))
+            log.debug("Find data file: %s" % (os.path.basename(self.current_file_name)))
             return True
         else:
             log.debug("Found observational data file: %s" % (os.path.basename(self.current_file_name)))
             return True
 
-    def search_first_frame(self, specified_file=False):
+    def search_first_frame(self):
         '''
         search first frame with proper date and time
         '''
-        # Search first possible file
 
-        if self.search_first_file() == False:
-            log.error("Cannot find a proper frame from the observational data.")
-            return False
+        # if self.search_first_file() == False:
+        #     log.error("Cannot find a proper frame from the observational data.")
+        #     return False
 
-        frame_date_time = self.current_frame_time.get_date_time()
-        if self.start_date_time.get_date_time() < self.current_frame_time.get_date_time():
-            t_offset = self.current_frame_time.get_date_time() - self.start_date_time.get_date_time()
+        frame_date_time = self.current_frame_time
+        if self.start_date_time < self.current_frame_time:
+            t_offset = self.current_frame_time - self.start_date_time
         else:
-            t_offset = self.start_date_time.get_date_time() - self.current_frame_time.get_date_time()
+            t_offset = self.start_date_time - self.current_frame_time
 
-        if self.debug:
-            log.debug('Current frame time: %04d-%02d-%02d %02d:%02d:%02d %03d%03d%03d' % (
-                self.current_frame_time.get_detail_time()))
-        time_offset = t_offset.seconds * 1e6 + t_offset.microseconds
+        log.debug('Current frame time: %s' % (self.current_frame_time.isot))
+        time_offset = t_offset.datetime.second * 1e6 + t_offset.datetime.microsecond
 
         skip_frame_number = int(time_offset / 3125) - 1
-        if self.debug:
-            log.debug('Time interval %d, skip frames: %d' % (time_offset, skip_frame_number))
+
+        log.debug('Time interval %d, skip frames: %d' % (time_offset, skip_frame_number))
 
         if (skip_frame_number >= 2):
             self.skip_frames(skip_frame_number)
@@ -116,25 +122,64 @@ class MuserData(MuserFrame):
         # If can find, search first frame
         while True:
             if self.is_loop_mode == False:
-                if self.start_date_time.get_date_time() <= self.current_frame_time.get_date_time():
+                if self.start_date_time <= self.current_frame_time:
                     break
             else:
-
-                if specified_file == False:
-                    if self.is_loop_mode == True and self.start_date_time.get_date_time() <= self.current_frame_time.get_date_time() and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
-                        break
-
-                    if self.is_loop_mode == False and self.start_date_time.get_date_time() <= self.current_frame_time.get_date_time():
-                        break
-                else:
-                    if self.is_loop_mode == True and self.start_date_time.get_date_time() <= self.current_frame_time.get_date_time():  # Find file in previous 1 minute
-                        break
+                if self.is_loop_mode == True and self.start_date_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
+                    break
+                if self.is_loop_mode == False and self.start_date_time <= self.current_frame_time:
+                    break
 
             if self.read_one_frame() == False:
                 self.in_file.close()
                 return False
-        if self.debug:
-            log.debug('Frame located.')
+        log.debug('Frame located.')
+        return True
+
+    def search_frame(self, search_time):
+        '''
+        search first frame with proper date and time
+        '''
+
+        # if self.search_first_file() == False:
+        #     log.error("Cannot find a proper frame from the observational data.")
+        #     return False
+        from astropy.time import Time
+        self.start_date_time = Time(search_time,format='isot')
+        if self.start_date_time < self.current_frame_time:
+            t_offset = self.current_frame_time - self.start_date_time
+        else:
+            t_offset = self.start_date_time - self.current_frame_time
+
+        log.debug('Current frame time: %s' % (self.current_frame_time.isot))
+
+        # Calculate time offset with unit of microsecond
+        time_offset = t_offset.to_value(unit='microsecond')
+
+        # time_offset = t_offset.datetime.second * 1e6 + t_offset.datetime.microsecond
+
+        skip_frame_number = int(time_offset / 3125000) - 1
+
+        log.debug('Time interval %d, skip frames: %d' % (time_offset, skip_frame_number))
+
+        if (skip_frame_number >= 2):
+            self.skip_frames(skip_frame_number)
+
+        # If can find, search first frame
+        while True:
+            if self.is_loop_mode == False:
+                if self.start_date_time <= self.current_frame_time:
+                    break
+            else:
+                if self.is_loop_mode == True and self.start_date_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
+                    break
+                if self.is_loop_mode == False and self.start_date_time <= self.current_frame_time:
+                    break
+
+            if self.read_one_frame() == False:
+                self.in_file.close()
+                return False
+        log.debug('Frame located.')
         return True
 
     def search_frame_realtime(self, specified_file=False):
@@ -147,28 +192,20 @@ class MuserData(MuserFrame):
             log.error("Cannot find a proper frame from the observational data.")
             return False
 
-        frame_date_time = self.current_frame_time.get_date_time()
-        if self.start_date_time.get_date_time() < self.current_frame_time.get_date_time():
-            t_offset = self.current_frame_time.get_date_time() - self.start_date_time.get_date_time()
+        frame_date_time = self.current_frame_time
+        if self.start_date_time < self.current_frame_time:
+            t_offset = self.current_frame_time - self.start_date_time
         else:
-            t_offset = self.start_date_time.get_date_time() - self.current_frame_time.get_date_time()
+            t_offset = self.start_date_time - self.current_frame_time
 
-        # print "****",self.start_date_time.get_detail_time(), self.current_frame_time.get_detail_time()
-        # print "####",self.start_date_time.get_date_time(),self.current_frame_time.get_date_time()
-        # print "@@@@",t_offset
-
-        # print self.start_date_time.get_date_time() , self.current_frame_time.get_date_time(),t_offset
         # Estimate the number of skip
         # print('current frame time: %04d-%02d-%02d %02d:%02d:%02d %03d%03d%03d' % (
         #     self.current_frame_time.get_detail_time()))
-        if self.debug:
-            log.debug('Current frame time: %04d-%02d-%02d %02d:%02d:%02d %03d%03d%03d' % (
-                self.current_frame_time.get_detail_time()))
-        time_offset = t_offset.seconds * 1e6 + t_offset.microseconds
+        log.debug('Current frame time: %s' % (self.current_frame_time.isot))
+        time_offset = t_offset.datetime.second * 1e6 + t_offset.datetime.microsecond
 
         skip_frame_number = int(time_offset / 3125) - 1
-        if self.debug:
-            log.debug('Time interval %d, skip frames: %d' % (time_offset, skip_frame_number))
+        log.debug('Time interval %d, skip frames: %d' % (time_offset, skip_frame_number))
 
         if (skip_frame_number >= 2):
             self.skip_frames(skip_frame_number)
@@ -176,22 +213,21 @@ class MuserData(MuserFrame):
         # If can find, search first frame
         while True:
             if self.is_loop_mode == False:
-                if self.start_date_time.get_date_time() <= self.current_frame_time.get_date_time():
+                if self.start_date_time <= self.current_frame_time:
                     break
             else:
 
                 if specified_file == False:
-                    if self.is_loop_mode == False and self.start_date_time.get_date_time() <= self.current_frame_time.get_date_time():
+                    if self.is_loop_mode == False and self.start_date_time <= self.current_frame_time:
                         break
                 else:
-                    if self.is_loop_mode == True and self.start_date_time.get_date_time() <= self.current_frame_time.get_date_time():  # Find file in previous 1 minute
+                    if self.is_loop_mode == True and self.start_date_time <= self.current_frame_time:  # Find file in previous 1 minute
                         break
 
             if self.read_one_frame() == False:
                 self.in_file.close()
                 return False
-        if self.debug:
-            log.debug('Frame located.')
+        log.debug('Frame located.')
         return True
 
     def check_next_file(self):
@@ -214,8 +250,7 @@ class MuserData(MuserFrame):
             self.in_file.seek(0, 0)
             self.if_read_first_frame_time = False
             self.current_file_name = file_name
-            if self.debug:
-                log.debug("File opened: %s" % (os.path.basename(file_name)))
+            log.debug("File opened: %s" % (os.path.basename(file_name)))
         except:
             # self.in_file.close()
             return False
@@ -227,29 +262,14 @@ class MuserData(MuserFrame):
         finally:
             None
 
-    def open_data_file(self, file_name = None):
+    def open_data_file(self, file_name=None):
         if file_name == None:
-            full_file_name = self.input_file_name
+            full_file_name = self.filename
         else:
             full_file_name = file_name
 
         log.info("Open MUSER file:", full_file_name)
 
-        return self.open_raw_file(full_file_name)
-
-    def open_muser_file(self, sub_array, year, month, day, hour, minute):
-        self.set_array(sub_array)
-        full_file_name = self.env.data_file(sub_array, year, month, day, hour, minute)
-        return self.open_raw_file(full_file_name)
-
-    def open_next_file(self, time_minute=1):
-
-        self.first_date_time.set_with_date_time(
-            self.first_date_time.get_date_time() + datetime.timedelta(minutes=time_minute))
-
-        full_file_name = self.env.data_file(self.sub_array, self.first_date_time.year, self.first_date_time.month,
-                                            self.first_date_time.day, self.first_date_time.hour,
-                                            self.first_date_time.minute)
         return self.open_raw_file(full_file_name)
 
     def close_file(self):
@@ -272,57 +292,12 @@ class MuserData(MuserFrame):
                     self.cal = caldata.reshape(33, 2, self.antennas * (self.antennas - 1) // 2, 16)
             else:
                 self.cal = caldata.reshape(self.antennas * (self.antennas - 1) // 2, 16)
-            if self.debug:
-                log.debug("Load Calibrated data.")
+            log.debug("Load Calibrated data.")
         else:
-            if self.debug:
-                log.error("Cannot find calibrated data.")
-
-    def load_uvw_data(self, file_name):
-
-        if self.env.file_exist(file_name) == True:
-            self.uvw_data = numpy.fromfile(file_name,
-                                        dtype=float)  # .reshape(repaet_number*self.antennas * (self.antennas - 1) // 2, 3)
-            if self.debug:
-                log.debug("Load UVW data.")
-                # print self.cal
-        else:
-            if self.debug:
-                log.error("Cannot find UVW data.")
-
-    def load_vis_data(self, file_name):
-
-        if self.env.file_exist(file_name) == True:
-            self.vis_data = numpy.fromfile(file_name, dtype=complex)
-            # if self.sub_array == 1:
-            #     self.vis = visdata.reshape(repaet_number*self.antennas * (self.antennas - 1) // 2, 16)
-            # elif self.sub_array == 2:
-            #     self.vis = visdata.reshape(repaet_number*self.antennas * (self.antennas - 1) // 2, 33)
-            if self.debug:
-                log.debug("Load visibility data.")
-                # print self.cal
-        else:
-            if self.debug:
-                log.error("Cannot find visibility data.")
-
-    def load_date_file(self, file_name):
-
-        if self.env.file_exist(file_name) == True:
-            self.date = numpy.fromfile(file_name,
-                                    dtype=float)  # .reshape(3, repaet_number*self.antennas * (self.antennas - 1) // 2)
-            # self.date1 = date[0]  # self.muser.obs_date_sum
-            # self.date2 = date[1]  # self.muser.obs_time_sum
-            # self.date3 = date[2]  # self.source
-
-        if self.debug:
-            log.debug("Load date and position.")
-        else:
-            if self.debug:
-                log.error("Cannot find date and position.")
+            log.error("Cannot find calibrated data.")
 
     def calibration(self):
-        if self.debug:
-            log.debug("Satellite phase correction")
+        log.debug("Satellite phase correction")
 
         if self.sub_array == 1:
             if self.obs_date == "2015-11-01":  # Temp used

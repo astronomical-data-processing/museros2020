@@ -84,103 +84,102 @@ class MuserBase(object):
     def convert_cross_correlation(self, buff):
         # read imaginary part of second channel
         c1 = c2 = complex()
-
-        imag2 = struct.unpack('B', buff[8])[0]
+        imag2 = struct.unpack('B', bytes([buff[8]]))[0]
         imag2 <<= 8
-        imag2 |= struct.unpack('B', buff[4])[0]
+        imag2 |= struct.unpack('B', bytes([buff[4]]))[0]
         imag2 <<= 8
-        imag2 |= struct.unpack('B', buff[0])[0]
+        imag2 |= struct.unpack('B', bytes([buff[0]]))[0]
         imag2 = self.signed(imag2)
 
         # read real part of second channel
-        real2 = struct.unpack('B', buff[9])[0]
+        real2 = struct.unpack('B', bytes([buff[9]]))[0]
         real2 <<= 8
-        real2 |= struct.unpack('B', buff[5])[0]
+        real2 |= struct.unpack('B', bytes([buff[5]]))[0]
         real2 <<= 8
-        real2 |= struct.unpack('B', buff[1])[0]
+        real2 |= struct.unpack('B', bytes([buff[1]]))[0]
         real2 = self.signed(real2)
 
         c2 = complex(real2, imag2)
 
         # read imaginary part of second channel
-        imag1 = struct.unpack('B', buff[10])[0]
+        imag1 = struct.unpack('B', bytes([buff[10]]))[0]
         imag1 <<= 8
-        imag1 |= struct.unpack('B', buff[6])[0]
+        imag1 |= struct.unpack('B', bytes([buff[6]]))[0]
         imag1 <<= 8
-        imag1 |= struct.unpack('B', buff[2])[0]
+        imag1 |= struct.unpack('B', bytes([buff[2]]))[0]
         imag1 = self.signed(imag1)
 
         # read real part of second channel
-        real1 = struct.unpack('B', buff[11])[0]
+        real1 = struct.unpack('B', bytes([buff[11]]))[0]
         real1 <<= 8
-        real1 |= struct.unpack('B', buff[7])[0]
+        real1 |= struct.unpack('B', bytes([buff[7]]))[0]
         real1 <<= 8
-        real1 |= struct.unpack('B', buff[3])[0]
+        real1 |= struct.unpack('B', bytes([buff[3]]))[0]
         real1 = self.signed(real1)
 
         c1 = complex(real1, imag1)
         return c1, c2
 
     def convert_auto_correlation(self, buff):
-        r1 = struct.unpack('B', buff[3])[0]
+        r1 = struct.unpack('B', bytes([buff[3]]))[0]
         r1 <<= 8
-        r1 |= struct.unpack('B', buff[2])[0]
+        r1 |= struct.unpack('B', bytes([buff[2]]))[0]
         r1 <<= 8
-        r1 |= struct.unpack('B', buff[1])[0]
+        r1 |= struct.unpack('B', bytes([buff[1]]))[0]
         r1 <<= 8
-        r1 |= struct.unpack('B', buff[0])[0]
+        r1 |= struct.unpack('B', bytes([buff[0]]))[0]
         # r1 = self.signed(r1)
 
-        r2 = struct.unpack('B', buff[7])[0]
+        r2 = struct.unpack('B', bytes([buff[7]]))[0]
         r2 <<= 8
-        r2 |= struct.unpack('B', buff[6])[0]
+        r2 |= struct.unpack('B', bytes([buff[6]]))[0]
         r2 <<= 8
-        r2 |= struct.unpack('B', buff[5])[0]
+        r2 |= struct.unpack('B', bytes([buff[5]]))[0]
         r2 <<= 8
-        r2 |= struct.unpack('B', buff[4])[0]
+        r2 |= struct.unpack('B', bytes([buff[4]]))[0]
         # r2 = self.signed(r2)
 
         return r1, r2
 
     def convert_time_offset(self, buff):
         r = []
-        r1 = struct.unpack('B', buff[1])[0]
+        r1 = struct.unpack('B', bytes([buff[1]]))[0]
         r1 <<= 8
-        r1 |= struct.unpack('B', buff[0])[0]
+        r1 |= struct.unpack('B', bytes([buff[0]]))[0]
 
-        r2 = struct.unpack('B', buff[9])[0]
+        r2 = struct.unpack('B', bytes([buff[9]]))[0]
         r2 <<= 8
-        r2 |= struct.unpack('B', buff[8])[0]
+        r2 |= struct.unpack('B', bytes([buff[8]]))[0]
 
         r.append((r2 + r1 * 0.0001) * 1e-09)
 
-        r1 = struct.unpack('B', buff[3])[0]
+        r1 = struct.unpack('B', bytes([buff[3]]))[0]
         r1 <<= 8
-        r1 |= struct.unpack('B', buff[2])[0]
+        r1 |= struct.unpack('B', bytes([buff[2]]))[0]
 
-        r2 = struct.unpack('B', buff[11])[0]
+        r2 = struct.unpack('B', bytes([buff[11]]))[0]
         r2 <<= 8
-        r2 |= struct.unpack('B', buff[10])[0]
+        r2 |= struct.unpack('B', bytes([buff[10]]))[0]
 
         r.append((r2 + r1 * 0.0001) * 1e-09)
 
-        r1 = struct.unpack('B', buff[5])[0]
+        r1 = struct.unpack('B', bytes([buff[5]]))[0]
         r1 <<= 8
-        r1 |= struct.unpack('B', buff[4])[0]
+        r1 |= struct.unpack('B', bytes([buff[4]]))[0]
 
-        r2 = struct.unpack('B', buff[13])[0]
+        r2 = struct.unpack('B', bytes([buff[13]]))[0]
         r2 <<= 8
-        r2 |= struct.unpack('B', buff[12])[0]
+        r2 |= struct.unpack('B', bytes([buff[12]]))[0]
 
         r.append((r2 + r1 * 0.0001) * 1e-09)
 
-        r1 = struct.unpack('B', buff[7])[0]
+        r1 = struct.unpack('B', bytes([buff[7]]))[0]
         r1 <<= 8
-        r1 |= struct.unpack('B', buff[6])[0]
+        r1 |= struct.unpack('B', bytes([buff[6]]))[0]
 
-        r2 = struct.unpack('B', buff[15])[0]
+        r2 = struct.unpack('B', bytes([buff[15]]))[0]
         r2 <<= 8
-        r2 |= struct.unpack('B', buff[14])[0]
+        r2 |= struct.unpack('B', bytes([buff[14]]))[0]
 
         r.append((r2 + r1 * 0.0001) * 1e-09)
 
@@ -188,22 +187,22 @@ class MuserBase(object):
 
     def convert_time_offset_high(self, buff):
         r = []
-        r0 = struct.unpack('B', buff[0])[0]
-        r1 = struct.unpack('B', buff[1])[0]
-        r2 = struct.unpack('B', buff[2])[0]
-        r3 = struct.unpack('B', buff[3])[0]
-        r4 = struct.unpack('B', buff[4])[0]
-        r5 = struct.unpack('B', buff[5])[0]
-        r6 = struct.unpack('B', buff[6])[0]
-        r7 = struct.unpack('B', buff[7])[0]
-        r8 = struct.unpack('B', buff[8])[0]
-        r9 = struct.unpack('B', buff[9])[0]
-        r10 = struct.unpack('B', buff[10])[0]
-        r11 = struct.unpack('B', buff[11])[0]
-        r12 = struct.unpack('B', buff[12])[0]
-        r13 = struct.unpack('B', buff[13])[0]
-        r14 = struct.unpack('B', buff[14])[0]
-        r15 = struct.unpack('B', buff[15])[0]  # read 16*8bits: 4*15(integer part) + 4*17(decimal part)
+        r0 = struct.unpack('B', bytes([buff[0]]))[0]
+        r1 = struct.unpack('B', bytes([buff[1]]))[0]
+        r2 = struct.unpack('B', bytes([buff[2]]))[0]
+        r3 = struct.unpack('B', bytes([buff[3]]))[0]
+        r4 = struct.unpack('B', bytes([buff[4]]))[0]
+        r5 = struct.unpack('B', bytes([buff[5]]))[0]
+        r6 = struct.unpack('B', bytes([buff[6]]))[0]
+        r7 = struct.unpack('B', bytes([buff[7]]))[0]
+        r8 = struct.unpack('B', bytes([buff[8]]))[0]
+        r9 = struct.unpack('B', bytes([buff[9]]))[0]
+        r10 = struct.unpack('B', bytes([buff[10]]))[0]
+        r11 = struct.unpack('B', bytes([buff[11]]))[0]
+        r12 = struct.unpack('B', bytes([buff[12]]))[0]
+        r13 = struct.unpack('B', bytes([buff[13]]))[0]
+        r14 = struct.unpack('B', bytes([buff[14]]))[0]
+        r15 = struct.unpack('B', bytes([buff[15]]))[0]  # read 16*8bits: 4*15(integer part) + 4*17(decimal part)
 
         a1 = (r15 << 7) | (r14 >> 1)
         a2 = ((r14 & 1) << 14) | (r13 << 6) | ((r12 & 0xfc) >> 2)

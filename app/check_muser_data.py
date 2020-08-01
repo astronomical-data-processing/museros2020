@@ -6,7 +6,9 @@
 from muser.data_models.parameters import muser_path, muser_data_path
 from muser.components.utils.installation_checks import check_data_directory
 from muser.components.io.muser_data_read import MuserDataReader
+from muser.data_models.muser_data import MuserData
 import logging
+import os
 
 log = logging.getLogger('logger')
 
@@ -18,15 +20,23 @@ def init_logging():
                         level=logging.INFO)
 
 
-def test_read_data():
+def check_data_info():
     data_file_name = 'CSRH_20151122-093500_89058131'
-    mdr = MuserDataReader(1, muser_data_path(data_file_name))
-    if mdr.search_first_file():
-        log.info('Cannot find the data file.')
+    file_name = muser_data_path(data_file_name)
+    muser = MuserData(sub_array = 1, file_name = file_name)
+    if not muser.check_muser_file():
+        print("Cannot find observational data or not a MUSER file.")
         exit(1)
-    mdr.get_file_info('2015-11-01T11:34:00','2015-11-01T11:34:00')
-
+    print("Checking MUSER File Information V20200801")
+    print("First Observational Time {}".format(muser.current_frame_time.isot))
+    # Check data
+    muser.search_frame('2015-11-22T09:41:00')
+    print("Filename {} is a valid MUSER Data File.".format(file_name))
+    print("Current Observational Time {}".format(muser.current_frame_time.isot))
+    print("Observational Mode: {} \nFrequency {}".format("LOOP" if muser.is_loop_mode else "Non Loop", muser.frequency))
+    print("Sub Band: {} - Sub Channel {}".format(muser.sub_band,muser.sub_channels))
+    muser.read_data()
 
 if __name__ == '__main__':
-
-    test_read_data()
+    # init_logging()
+    check_data_info()
