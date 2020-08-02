@@ -8,28 +8,27 @@ path = os.path.abspath(os.path.dirname(__file__))
 
 from argparse import *
 import datetime
+import numpy
 import traceback
 import logging
 from muser.data_models.muser_data import MuserData
 from muser.data_models.parameters import muser_path, muser_data_path
 from rascil.processing_components.visibility.coalesce import convert_visibility_to_blockvisibility, \
     convert_blockvisibility_to_visibility
-
+from astropy.time import Time
 
 log = logging.getLogger('muser')
 
 class Phase:
-    def __init__(self, sub_array=None, is_loop_mode=None, obs_date_time=None, frame_number=None, calibration_sequence=None, filename=None, debug=0):
+    def __init__(self, sub_array=None, is_loop_mode=None, obs_date_time=None, frame_number=None, filename=None):
         self.sub_array = sub_array
         self.frame_number = frame_number
-        self.calibration_sequence = calibration_sequence
         self.data_source = 0
         self.obs_date_time = None
-        self.debug = debug
         self.is_loop_mode = is_loop_mode
+
         if obs_date_time is not None and len(obs_date_time)>0:
             log.info("Searched phase data date and time: %s" % obs_date_time)
-            self.obs_date_time = valid_date(obs_date_time)
             self.year = self.obs_date_time.date().year
             self.month = self.obs_date_time.date().month
             self.day = self.obs_date_time.date().day
@@ -54,9 +53,8 @@ class Phase:
         if self.debug == 1:
             log.info('Reading Visibility Data of calibration......')
         if muser_calibration.open_data_file() == False:
-            print 'Error: cannot find the data file.'
-            exit
-
+            print('Error: cannot find the data file.')
+            exit(0)
 
         muser_calibration.skip_frames(self.frame_number)
         self.last_sub_band = -1
@@ -65,14 +63,13 @@ class Phase:
         if self.is_loop_mode == True:
             frame_NUM = muser_calibration.frame_number * 2
 
-            calibration_Data = np.ndarray(
+            calibration_Data = numpy.ndarray(
                 shape=(muser_calibration.frame_number, muser_calibration.polarization_number,
                        muser_calibration.antennas * (muser_calibration.antennas - 1) // 2, 16),
                 dtype=complex)
         else:
             frame_NUM = 1
-            print
-            calibration_Data = np.ndarray(
+            calibration_Data = numpy.ndarray(
                 shape=(muser_calibration.antennas * (muser_calibration.antennas - 1) // 2, 16),
                 dtype=complex)
 
@@ -82,12 +79,11 @@ class Phase:
                 return False
             muser_calibration.read_data()
 
-            self.year = muser_calibration.current_frame_time.year
-            self.month = muser_calibration.current_frame_time.month
-            self.day = muser_calibration.current_frame_time.day
+            self.year = muser_calibration.current_frame_time.datetime.year
+            self.month = muser_calibration.current_frame_time.datetime.month
+            self.day = muser_calibration.current_frame_time.datetime.day
 
-            if self.debug == 1:
-                log.info("Reading No. %d %s %d %d" % (i, muser_calibration.current_frame_time.get_string(), muser_calibration.sub_band, muser_calibration.polarization))
+            log.info("Reading No. %d %s %d %d" % (i, muser_calibration.current_frame_time.isot, muser_calibration.sub_band, muser_calibration.polarization))
             #According to the DISCUSSION with LJ.Chen
             #muser_calibration.delay_process('satellite')
             # Delay processing for satellite
@@ -108,55 +104,36 @@ class Phase:
                             calibration_Data[bl][channel] = muser_calibration.baseline_data[bl][channel]
                     bl = bl + 1
 
-        file_name = self.env.cal_file(self.sub_array,self.year, self.month, self.day, self.calibration_sequence)
-        if self.debug == 1:
-            log.info("Writing to file: " + os.path.basename(file_name))
+        file_name = muser_path("cal%04d%02d%02d"%(self.sub_array,self.year, self.month, self.day))
+        log.info("Writing to file: " + os.path.basename(file_name))
         calibration_Data.tofile(file_name)
-        if self.debug == 1:
-            log.info("Exportphase done.")
+        log.info("Exportphase done.")
         return True
 
-def valid_date(s):
-    try:
-        s = s.strip()
-        split_s = string.split(s, ' ')
-        if len(split_s) == 1:
-            return datetime.datetime.strptime(s, "%Y-%m-%d")
-        elif len(split_s) == 2:
-            return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
-        elif len(split_s) == 3:
-            s = string.join(split_s, ' ')
-            return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S %f")
-        else:
-            msg = "Not a valid date: '{0}'.".format(s)
-            raise ArgumentTypeError(msg)
-    except ValueError:
-        msg = "Not a valid date: '{0}'.".format(s)
-        raise ArgumentTypeError(msg)
+def export_phase(args):
+    muser = args.muser
+    input_file = args.file
+    frame = args.number
+    start = args.start
+    loop_mode = args.loop
 
-def exportphase (
-    muser=None,
-    mode=None,
-    inputfile=None,
-    start=None,
-    frame=1,
-    calibration=0,
-    debug=None,
-    ):
+    cal = Phase(muser, loop_mode, start, frame, input_file)
+    cal.calibration()
 
-    try:
-        log.origin('exportphase')
-        # -----------------------------------------'
-        # beginning of importmiriad implementation
-        # -----------------------------------------
-        #obsFileName = valid_date(start)
+if __name__ == '__main__':
+    import argparse
 
-        cal = Phase(muser, mode, start, frame, calibration, inputfile, debug)
-        cal.Calibration()
-    except Exception, e:
-        print traceback.format_exc()
-        raise
-    	log.post("Failed to export muser phase file", "ERROR")
-    return
+    parser = argparse.ArgumentParser(description='List Muser Data Information for Each Frame')
+    parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
+    parser.add_argument('-f', "--file", type=str, required=True, default='', help='The file name')
+    parser.add_argument('-l', "--loop", type=bool, default=True, help='Loop Mode')
+    parser.add_argument('-s', "--start", type=str, default='', help='The beginning time')
+    parser.add_argument('-c', "--calib", type=str, default='', help='The beginning time')
+    parser.add_argument('-n', "--number", type=int, default=1, help='The number of frames')
+
+    export_phase(parser.parse_args())
+
+
+
 
 
