@@ -4,7 +4,7 @@
 """
 
 import numpy
-
+import logging
 
 class MuserDelay(object):
     __instance = None
@@ -89,3 +89,5 @@ class MuserDelay(object):
             return self.delay_array_low
         else:
             return self.delay_array_hi
+
+

@@ -12,6 +12,7 @@ import math
 import struct
 
 from muser.data_models.muser_data_models import MuserBase, MuserFrameHeader
+from muser.data_models.muser_delay_models import MuserDelay
 from muser.data_models.parameters import IF_BANDWIDTH, LOOP_MODE_LOW, NON_LOOP_MODE_LOW, NON_LOOP_MODE_HIGH, \
     LOOP_MODE_HIGH
 from astropy.time import Time, TimezoneInfo
@@ -137,6 +138,9 @@ class MuserFrame(MuserBase):
 
         self.uvws_sum = numpy.zeros(shape=((self.antennas * (self.antennas - 1) // 2), 3), dtype=float)
 
+        # To meet the RASCIL, blockvisibility [ntimes, nants, nants, nchan, npol]
+        self.block_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels, 1), dtype=complex)
+
         self.baseline_data = numpy.zeros(
             shape=(self.antennas * (self.antennas - 1) // 2, self.sub_channels),
             dtype=complex)
@@ -145,7 +149,7 @@ class MuserFrame(MuserBase):
             dtype=int)
 
         self.position_data = numpy.zeros(shape=(self.sub_channels, self.dr_output_antennas, self.dr_output_antennas),
-                                           dtype=float)
+                                         dtype=float)
         self.correlation_data = numpy.zeros(
             shape=(self.sub_channels, self.dr_output_antennas, self.dr_output_antennas),
             dtype=float)
@@ -156,7 +160,7 @@ class MuserFrame(MuserBase):
 
         self.delay = numpy.ndarray(shape=(self.dr_output_antennas), dtype=float)
 
-        self.delay_compensation = 0
+        self.delay_compensation = MuserDelay()
 
         # self.env.antenna_loaded = False
 
@@ -255,10 +259,10 @@ class MuserFrame(MuserBase):
 
         # print "observaton time(utc):", date
 
-        self.obs_date = self.current_frame_utc_time.isot
-        self.obs_time = self.current_frame_utc_time.isot
+        self.obs_date = self.current_frame_time.isot
+        self.obs_time = self.current_frame_time.isot
 
-        if (self.current_frame_utc_time < Time('2015-01-01', format='isot')):
+        if (self.current_frame_time < Time('2015-01-01T00:00:00', format='isot')):
             self.version = False
         else:
             self.version = True
@@ -408,7 +412,11 @@ class MuserFrame(MuserBase):
                         #     print repr(buff)
                         c1, c2 = self.convert_cross_correlation(buff)
                         # self.baseline_data[self.polarization][antenna1][antenna2][channel] = c1
+
                         if (antenna1 < self.antennas - 1 and antenna2 < self.antennas):
+                            self.block_data[0, antenna1, antenna2, channel, 0] = c1
+                            self.block_data[0, antenna1, antenna2, channel + 1, 0] = c2
+
                             self.baseline_data[bl][channel] = c1
                             self.baseline_data_flag[bl][channel] = True
 
@@ -434,22 +442,33 @@ class MuserFrame(MuserBase):
                     r1, r2 = self.convert_auto_correlation(buff1)
                     self.auto_correlation_data[channel][antenna] = r1
                     self.auto_correlation_data[channel + 1][antenna] = r2
+                    if antenna < self.antennas - 4:
+                        self.block_data[0, antenna, antenna, channel, 0] = r1
+                        self.block_data[0, antenna, antenna, channel + 1, 0] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
                     self.auto_correlation_data[channel][antenna + 1] = r1
                     self.auto_correlation_data[channel + 1][antenna + 1] = r2
+                    if antenna < self.antennas - 4:
+                        self.block_data[0, antenna + 1, antenna + 1, channel, 0] = r1
+                        self.block_data[0, antenna + 1, antenna + 1, channel + 1, 0] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
                     self.auto_correlation_data[channel][antenna + 2] = r1
                     self.auto_correlation_data[channel + 1][antenna + 2] = r2
+                    if antenna < self.antennas - 4:
+                        self.block_data[0, antenna + 2, antenna + 2, channel, 0] = r1
+                        self.block_data[0, antenna + 2, antenna + 2, channel + 1, 0] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
                     self.auto_correlation_data[channel][antenna + 3] = r1
                     self.auto_correlation_data[channel + 1][antenna + 3] = r2
-
+                    if antenna < self.antennas - 4:
+                        self.block_data[0, antenna + 3, antenna + 3, channel, 0] = r1
+                        self.block_data[0, antenna + 3, antenna + 3, channel + 1, 0] = r2
                     self.in_file.seek(32, 1)
                     # if channel==4 and antenna ==0:
                     #       print self.auto_correlation_data[channel][antenna]
@@ -467,7 +486,7 @@ class MuserFrame(MuserBase):
         elif self.sub_array == 2:
             self.in_file.seek(1692, 1)  # 1690 reserve and 2bytes frequency code
             visbility = numpy.zeros(shape=(self.dr_output_antennas * (self.dr_output_antennas - 1) / 2),
-                                      dtype=complex)
+                                    dtype=complex)
             for channel in range(0, self.sub_channels):  # read data of all antennas in one channel
                 for bl_len in range(0, self.dr_output_antennas * (self.dr_output_antennas - 1) / 2, 2):
                     buff = self.in_file.read(12)
@@ -517,7 +536,6 @@ class MuserFrame(MuserBase):
                         self.in_file.seek(8, 1)
                 self.in_file.seek(72, 1)
 
-
         log.debug("Read visibility  and auto correlation data.")
         return True
 
@@ -527,48 +545,3 @@ class MuserFrame(MuserBase):
             return str(False), []
         self.seek_frame_header()
 
-    def delay_process(self, planet):
-        # print "delay processing..."
-        parameter = 0.
-        delay = numpy.ndarray(shape=(self.dr_output_antennas), dtype=float)
-
-        if self.sub_array == 1:  # muser-1
-            if planet == 'sun':
-                parameter = 12.5
-            elif planet == 'satellite':
-                parameter = 2.5
-            delayns = self.delay_compensation.get_delay_value(self.sub_array,
-                                                              self.current_frame_time.get_short_string())
-            delay = self.par_delay * (10 ** 9) - delayns
-        else:  # muser-2
-            parameter = 12.5
-            delay = self.par_delay
-
-        for channel in range(0, self.sub_channels):
-            bl = 0
-            for antenna1 in range(0, self.antennas - 1):  # SubChannelsLow = 16
-                for antenna2 in range(antenna1 + 1, self.antennas):
-                    tg = delay[antenna2] - delay[antenna1]
-                    tg0 = int(delay[antenna2]) - int(delay[antenna1])
-                    if self.sub_array == 1:
-                        Frf = (self.frequency * 1e-6 + channel * 25 + parameter) / 1000.0
-                        Fif = (channel * 25 + parameter + 50.0) / 1000.0
-                        phai = 2 * pi * (Frf * tg - Fif * tg0)
-                        self.baseline_data[bl][channel] = complex(
-                            self.baseline_data[bl][channel].real * math.cos(phai) +
-                            self.baseline_data[bl][channel].imag * math.sin(phai),
-                            self.baseline_data[bl][channel].imag * math.cos(phai) -
-                            self.baseline_data[bl][channel].real * math.sin(phai))
-                    else:
-                        Frf = (self.frequency * 1e-6 + (15 - channel) * 25 + parameter) / 1000.0
-                        Fif = (channel * 25 + parameter + 50.0) / 1000.0  # local frequency(GHz)
-                        phai = 2 * pi * (-Frf * tg - Fif * tg0)
-                        # phai = 2 * pi * Fif * tg0 + 2 * pi * Frf * (tg - tg0)
-                        self.baseline_data[bl][channel] = complex(
-                            self.baseline_data[bl][channel].real * math.cos(phai) +
-                            self.baseline_data[bl][channel].imag * math.sin(phai),
-                            self.baseline_data[bl][channel].imag * (-1) * math.cos(phai) +
-                            self.baseline_data[bl][channel].real * math.sin(phai))
-                    bl = bl + 1
-
-        log.debug("Delay Process and fringe stopping... Done.")

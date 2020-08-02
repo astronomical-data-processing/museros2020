@@ -36,6 +36,8 @@ from rascil.processing_components import advise_wide_field, create_image_from_vi
     predict_skycomponent_visibility
 from muser.data_models.muser_data import MuserData
 from muser.data_models.parameters import muser_path, muser_data_path
+from rascil.processing_components.visibility.coalesce import convert_visibility_to_blockvisibility, \
+    convert_blockvisibility_to_visibility
 import logging
 
 try:
@@ -50,29 +52,37 @@ except:
     run_ms_tests = False
 
 def create_configuration(name: str = 'LOWBD2', **kwargs):
+    from muser.data_models.parameters import muser_path
+    import os
+    conf_dir = muser_path('configurations')
+
     location = EarthLocation(lon=115.2505, lat=42.211833333, height=1365.0)
-    if name == 'MUSER-2':
-        lowcore = create_configuration_from_file(antfile="muser-2.csv",
+    if name == 'MUSER2':
+        antfile = os.path.join(conf_dir, 'muser-2.csv')
+        lowcore = create_configuration_from_file(antfile=antfile,
                                                  mount='altaz', names='MUSER_%d',
                                                  diameter=2.0, name='MUSER', location=location, **kwargs)
     else:
-        lowcore = create_configuration_from_file(antfile="muser-1.csv",
+        antfile = os.path.join(conf_dir, 'muser-1.csv')
+        lowcore = create_configuration_from_file(antfile=antfile,
                                                  mount='altaz', names='MUSER_%d',
                                                  diameter=4.0, name='MUSER', location=location, **kwargs)
     return lowcore
 
 # def read_muser_data(file_name: str=''):
 
-if __name__ == '__main__':
 
-    if len(sys.argv) == 1:
-        muser='MUSER-1'
+def main(args):
+
+    if args.muser == '1':
+        muser_array='MUSER1'
     else:
-        muser='MUSER-2'
+        muser_array='MUSER2'
 
     data_file_name = 'CSRH_20151122-093500_89058131'
     file_name = muser_data_path(data_file_name)
-    muser = MuserData(sub_array = 1, file_name = file_name)
+    muser = MuserData(sub_array=1, file_name=file_name)
+
     if not muser.check_muser_file():
         print("Cannot find observational data or not a MUSER file.")
         exit(1)
@@ -85,51 +95,60 @@ if __name__ == '__main__':
     print("Observational Mode: {} \nFrequency {}".format("LOOP" if muser.is_loop_mode else "Non Loop", muser.frequency))
     print("Sub Band: {} - Sub Channel {}".format(muser.sub_band,muser.sub_channels))
     muser.read_data()
-
-
-    # MUSER-1 400Mhz - 1975 Mhz
-    # MUSER-2 2000 Mhz - 15000 Mhz
-
+    muser.delay_process('sun')
     # Create configuration
-    muser_core = create_configuration(muser)
-
-    frequency = numpy.array([freq * 1e6])
-    # Directory of storing result
-
-    channel_bandwidth = numpy.array([25e6])
-    reffrequency = numpy.max(frequency)
+    muser_core = create_configuration(muser_array)
 
     # Create Phase Centre
-    phasecentre = SkyCoord(ra=+80 * u.deg, dec=41 * u.deg, frame='icrs', equinox='J2000')
+    # TODO: need to compute the position of the SUN
+    local_time = Time(muser.current_frame_utc_time, location=('115.2505d', '42.211833333d'))
+    sidereal_time = local_time.sidereal_time('apparent')
+    print("Sidereal time: {}".format(sidereal_time))
+    times = numpy.array([sidereal_time.hour]) #muser.current_frame_time.datetime])
+    freq = []
+    for i in range(16):
+        freq.append(muser.frequency+25e6*i)
+    frequency = numpy.array(freq)
+    channelbandwidth = numpy.array([25e6]*16)
+    reffrequency = numpy.max(frequency)
 
-    vt = create_visibility(muser_core, times, frequency, channel_bandwidth=channel_bandwidth,
-                           weight=1.0, phasecentre=phasecentre,
-                           polarisation_frame=PolarisationFrame('stokesI'))
+    from astropy.coordinates import solar_system_ephemeris, EarthLocation
+    from astropy.coordinates import get_body_barycentric, get_body, get_moon
+    location = EarthLocation(lon=115.2505, lat=42.211833333, height=1365.0)
+    solar_system_ephemeris.set('de432s')
+    phasecentre = get_body('sun', muser.current_frame_utc_time, location)
+    # phasecentre = SkyCoord(ra=+15.0 * u.deg, dec=-45.0 * u.deg, frame='icrs', equinox='J2000')
 
-    lowr3 = create_named_configuration('LOWBD2', rmax=750.0)
-
-    times = numpy.zeros([1])
-    frequency = numpy.array([1e8])
-    channelbandwidth = numpy.array([1e6])
-    phasecentre = SkyCoord(ra=+15.0 * u.deg, dec=-45.0 * u.deg, frame='icrs', equinox='J2000')
-
-    bvis = create_blockvisibility(lowr3, times, frequency, phasecentre=phasecentre,
+    # visshape = [ntimes, nants, nants, nchan, npol]
+    bvis = create_blockvisibility(muser_core, times, frequency, phasecentre=phasecentre,
                                   weight=1.0, polarisation_frame=PolarisationFrame('stokesI'),
                                   channel_bandwidth=channelbandwidth)
+    bvis.vis[:,...,:] = muser.block_data
+    vis_list = []
+    vis_list.append(bvis)
+    export_file_name = muser_data_path(data_file_name)+'.ms'
+    # export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
 
+    # matplotlib.use('Agg')
+
+    from matplotlib import pylab
+
+    from matplotlib import pyplot as plt
     vt = convert_blockvisibility_to_visibility(bvis)
+    plt.clf()
+    plt.plot(vt.data['uvw'][:, 0], vt.data['uvw'][:, 1], '.', color='b')
+    plt.plot(-vt.data['uvw'][:, 0], -vt.data['uvw'][:, 1], '.', color='r')
+    plt.xlabel('U (wavelengths)')
+    plt.ylabel('V (wavelengths)')
+    plt.title("UV coverage")
+    # plt.savefig(storedir + '/UV_coverage.pdf', format='pdf')
+    plt.show()
 
-    advice = advise_wide_field(vt, guard_band_image=3.0, delA=0.1, facets=1, wprojection_planes=1,
-                               oversampling_synthesised_beam=4.0)
-    cellsize = advice['cellsize']
+    #
+    # advice = advise_wide_field(vt, guard_band_image=3.0, delA=0.1, facets=1, wprojection_planes=1,
+    #                            oversampling_synthesised_beam=4.0)
+    # cellsize = advice['cellsize']
 
-    m31image = create_test_image(frequency=frequency, cellsize=cellsize)
-    nchan, npol, ny, nx = m31image.data.shape
-    m31image.wcs.wcs.crval[0] = vt.phasecentre.ra.deg
-    m31image.wcs.wcs.crval[1] = vt.phasecentre.dec.deg
-    m31image.wcs.wcs.crpix[0] = float(nx // 2)
-    m31image.wcs.wcs.crpix[1] = float(ny // 2)
-    vt = predict_list_serial_workflow([vt], [m31image], context='2d')[0]
     # uvdist = numpy.sqrt(vt.data['uvw'][:, 0] ** 2 + vt.data['uvw'][:, 1] ** 2)
     #
     # model = create_image_from_visibility(vt, cellsize=cellsize, npixel=512)
@@ -144,7 +163,16 @@ if __name__ == '__main__':
     # export_image_to_fits(dirty, '%s/imaging_dirty.fits' % (results_dir))
     # export_image_to_fits(psf, '%s/imaging_psf.fits' % (results_dir))
 
-    v = convert_visibility_to_blockvisibility(vt)
-    vis_list = []
-    vis_list.append(v)
-    export_blockvisibility_to_ms(msoutfile, vis_list, source_name='M31')
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='List Muser Data Information for Each Frame')
+    parser.add_argument('-m', "--muser", type=str, default='1', help='The MUSER array')
+    parser.add_argument('-c', "--calib", type=str, default='', help='The Calibration file name')
+    parser.add_argument('-f', "--file", type=str, default='', help='The file name')
+    parser.add_argument('-l', "--line", type=int, default=1, help='The number of frames')
+    parser.add_argument('-s', "--start", type=str, default='', help='The beginning time ')
+
+    main(parser.parse_args())
