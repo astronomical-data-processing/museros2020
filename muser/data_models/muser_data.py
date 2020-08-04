@@ -335,3 +335,47 @@ class MuserData(MuserFrame):
 
         log.debug("Delay Process and fringe stopping... Done.")
 
+    def phase_calibration(self, cal):
+        log.debug("Satellite phase correction")
+
+        if self.sub_array == 1:
+            for chan in range(0, self.sub_channels):
+                bl = 0
+                for antenna1 in range(0, self.antennas - 1):
+                    for antenna2 in range(antenna1 + 1, self.antennas):
+                        A = numpy.sqrt(
+                            self.baseline_data[bl][chan].imag * self.baseline_data[bl][chan].imag +
+                            self.baseline_data[bl][chan].real * self.baseline_data[bl][chan].real)
+
+                        phai_sun = numpy.arctan2(self.baseline_data[bl][chan].imag,
+                                                 self.baseline_data[bl][chan].real)
+                        if self.is_loop_mode == True:
+                            phai = phai_sun - numpy.arctan2(
+                                cal[self.sub_band][self.polarization][bl][chan].imag,
+                                cal[self.sub_band][self.polarization][bl][chan].real)
+                        else:
+                            phai = phai_sun - numpy.arctan2(cal[bl][chan].imag, cal[bl][chan].real)
+                        self.baseline_data[bl][chan] = complex(A * numpy.cos(phai), A * numpy.sin(phai))
+                        self.block_data[0,antenna1,antenna2,chan,0] = self.baseline_data[bl][chan]
+                        bl = bl + 1
+        else:
+
+            for chan in range(0, self.sub_channels):
+                bl = 0
+                for antenna1 in range(0, self.antennas - 1):
+                    for antenna2 in range(antenna1 + 1, self.antennas):
+                        A = numpy.sqrt(
+                            self.baseline_data[bl][chan].imag * self.baseline_data[bl][chan].imag +
+                            self.baseline_data[bl][chan].real * self.baseline_data[bl][chan].real)
+                        phai_sun = numpy.arctan2(self.baseline_data[bl][chan].imag, self.baseline_data[bl][chan].real)
+                        if self.is_loop_mode:
+                            phai = phai_sun - numpy.arctan2(
+                                self.cal[self.sub_band][self.polarization][bl][chan].imag,
+                                self.cal[self.sub_band][self.polarization][bl][chan].real)
+                        else:
+                            phai = phai_sun - numpy.arctan2(self.cal[bl][chan].imag, self.cal[bl][chan].real)
+                        self.baseline_data[bl][chan] = complex(A * numpy.cos(phai), A * numpy.sin(phai))
+                        self.block_data[0,antenna1,antenna2,chan,0] = self.baseline_data[bl][chan]
+                        bl = bl + 1
+
+

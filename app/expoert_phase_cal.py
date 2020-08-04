@@ -20,41 +20,33 @@ from astropy.time import Time
 log = logging.getLogger('muser')
 
 class Phase:
-    def __init__(self, sub_array=None, is_loop_mode=None, obs_date_time=None, frame_number=None, filename=None):
+    def __init__(self, sub_array=None, is_loop_mode=None, obs_date_time=None, frame_number=None, file_name=None):
         self.sub_array = sub_array
         self.frame_number = frame_number
         self.data_source = 0
-        self.obs_date_time = None
+        if obs_date_time is not None:
+            self.obs_date_time = Time(obs_date_time, format='isot')
+        else:
+            self.obs_date_time = None
         self.is_loop_mode = is_loop_mode
 
         if obs_date_time is not None and len(obs_date_time)>0:
             log.info("Searched phase data date and time: %s" % obs_date_time)
-            self.year = self.obs_date_time.date().year
-            self.month = self.obs_date_time.date().month
-            self.day = self.obs_date_time.date().day
-            self.hour = self.obs_date_time.time().hour
-            self.minute = self.obs_date_time.time().minute
 
-        self.filename = None
-        self.filename = filename.strip()
+        self.file_name = file_name.strip()
 
-    def Calibration(self):
+    def calibration(self):
         if self.frame_number < 0:
             log.error("You should input a positive number!")
             return False
-
-        muser_calibration = MuserData(self.sub_array)
+        file_name = muser_data_path(self.file_name)
+        muser_calibration = MuserData(self.sub_array, file_name)
         if self.obs_date_time is not None:
-            muser_calibration.set_data_date_time(self.year, self.month, self.day, self.hour, self.minute,0,0,0,0)
-        if len(self.filename.strip())>0:
-            muser_calibration.input_file_name=self.filename
-        else:
-            muser_calibration.input_file_name=''
-        if self.debug == 1:
-            log.info('Reading Visibility Data of calibration......')
-        if muser_calibration.open_data_file() == False:
-            print('Error: cannot find the data file.')
-            exit(0)
+            muser_calibration.set_data_date_time(self.obs_date_time)
+        log.info('Reading Visibility Data of calibration......')
+        if not muser_calibration.check_muser_file():
+            print("Cannot find observational data or not a MUSER file.")
+            exit(1)
 
         muser_calibration.skip_frames(self.frame_number)
         self.last_sub_band = -1
@@ -104,7 +96,7 @@ class Phase:
                             calibration_Data[bl][channel] = muser_calibration.baseline_data[bl][channel]
                     bl = bl + 1
 
-        file_name = muser_path("cal%04d%02d%02d"%(self.sub_array,self.year, self.month, self.day))
+        file_name = muser_data_path("MUSER%1d-%04d%02d%02d.CAL"%(self.sub_array,self.year, self.month, self.day))
         log.info("Writing to file: " + os.path.basename(file_name))
         calibration_Data.tofile(file_name)
         log.info("Exportphase done.")
@@ -127,7 +119,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
     parser.add_argument('-f', "--file", type=str, required=True, default='', help='The file name')
     parser.add_argument('-l', "--loop", type=bool, default=True, help='Loop Mode')
-    parser.add_argument('-s', "--start", type=str, default='', help='The beginning time')
+    parser.add_argument('-s', "--start", type=str, default=None, help='The beginning time')
     parser.add_argument('-c', "--calib", type=str, default='', help='The beginning time')
     parser.add_argument('-n', "--number", type=int, default=1, help='The number of frames')
 
