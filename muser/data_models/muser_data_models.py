@@ -72,8 +72,8 @@ class MuserBase(object):
         stime >>= 4
         # read year
         year = (stime & 0xfff) + 2000
-        # print tmp
-        tmp = "{:4d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:d}".format(year,month,day,hour,minute,second,millisecond*1000+nanosecond)
+        # print(nanosecond,millisecond)
+        tmp = "{:4d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:06d}".format(year,month,day,hour,minute,second,millisecond*1000+microsecond)
         return Time(tmp,format='isot',scale='utc')
 
     def signed(self, a):

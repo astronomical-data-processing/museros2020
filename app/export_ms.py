@@ -8,7 +8,7 @@ from rascil.processing_components import create_named_configuration
 import argparse
 
 # from matplotlib import plt.savefig
-from astropy.coordinates import EarthLocation, SkyCoord
+from astropy.coordinates import EarthLocation, SkyCoord, ITRS
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -23,6 +23,8 @@ from astropy import units as u
 from astropy.wcs.utils import pixel_to_skycoord
 
 from rascil.data_models.polarisation import PolarisationFrame
+from astropy.coordinates import solar_system_ephemeris, EarthLocation
+from astropy.coordinates import get_body_barycentric, get_body, get_moon
 
 from rascil.processing_components import image_raster_iter
 from rascil.processing_components import create_visibility
@@ -52,12 +54,13 @@ try:
 except:
     run_ms_tests = False
 
+
 def create_configuration(name: str = 'LOWBD2', **kwargs):
     from muser.data_models.parameters import muser_path
     import os
     conf_dir = muser_path('configurations')
 
-    location = EarthLocation(lon=115.2505, lat=42.211833333, height=1365.0)
+    location = EarthLocation(lon=115.2505*u.deg, lat=42.211833333*u.deg, height=1365.0*u.m)
     if name == 'MUSER2':
         antfile = os.path.join(conf_dir, 'muser-2.csv')
         lowcore = create_configuration_from_file(antfile=antfile,
@@ -67,38 +70,41 @@ def create_configuration(name: str = 'LOWBD2', **kwargs):
         antfile = os.path.join(conf_dir, 'muser-1.csv')
         lowcore = create_configuration_from_file(antfile=antfile,
                                                  mount='altaz', names='MUSER_%d',
-                                                 diameter=4.0, name='MUSER', location=location, **kwargs)
+                                                 diameter=4.5, name='MUSER', location=location, **kwargs)
     return lowcore
+
 
 # def read_muser_data(file_name: str=''):
 
 
 def main(args):
-
     if args.muser == '1':
-        muser_array='MUSER1'
+        muser_array = 'MUSER1'
     else:
-        muser_array='MUSER2'
+        muser_array = 'MUSER2'
 
-    data_file_name = 'CSRH_20151122-093500_89058131'
-    file_name = muser_data_path(data_file_name)
-    muser = MuserData(sub_array=1, file_name=file_name)
+    location = EarthLocation(lon=115.2505*u.deg, lat=42.211833333*u.deg, height=1365.0*u.m)
 
-    if not muser.check_muser_file():
+    muser = MuserData(sub_array=1)
+    if not muser.init_data_environment():
+        print("No data environment prepared, exit.")
+        return -1
+    if not muser.search_first_file(frame_time='2015-11-22T12:50:30'):
         print("Cannot find observational data or not a MUSER file.")
-        exit(1)
+        return -1
+    data_file_name = muser.current_file_name
     print("Checking MUSER File Information V20200801")
     print("First Observational Time {}".format(muser.current_frame_time.isot))
 
     # Load Phase Calibration Data
     phase_cal = MuserPhase(muser.sub_array, muser.is_loop_mode, muser.current_frame_time)
     # Check data
-    print("Filename {} is a valid MUSER Data File.".format(file_name))
-    print("Current Observational Time {}".format(muser.current_frame_time.isot))
+    print("Filename {} is a valid MUSER Data File.".format(data_file_name))
+    print("Current Observational Time {}".format(muser.current_frame_utc_time.isot))
     print("Observational Mode: {} \nFrequency {}".format("LOOP" if muser.is_loop_mode else "Non Loop", muser.frequency))
-    print("Sub Band: {} - Sub Channel {}".format(muser.sub_band,muser.sub_channels))
+    print("Sub Band: {} - Sub Channel {}".format(muser.sub_band, muser.sub_channels))
 
-    #muser.search_frame('2015-11-22T09:41:00')
+    # muser.search_frame('2015-11-22T09:41:00')
     muser.read_data()
     muser.delay_process('sun')
 
@@ -109,37 +115,60 @@ def main(args):
 
     # Create Phase Centre
     # TODO: need to compute the position of the SUN
-    local_time = Time(muser.current_frame_utc_time, location=('115.2505d', '42.211833333d'))
-    sidereal_time = local_time.sidereal_time('apparent')
-    print("Sidereal time: {}".format(sidereal_time))
-    times = numpy.array([sidereal_time.hour]) #muser.current_frame_time.datetime])
     freq = []
-    for i in range(16):
-        freq.append(muser.frequency+25e6*i)
-    frequency = numpy.array(freq)
-    channelbandwidth = numpy.array([25e6]*16)
-    reffrequency = numpy.max(frequency)
+    if muser.is_loop_mode:
+        if muser.sub_array == 1:
+            for i in range(64):
+                freq.append(400e6 + 25e6 * i)
+            channelbandwidth = numpy.array([25e6] * 64)
+        else:
+            for i in range(33 * 16):
+                freq.append(2e9 + 25e6 * i)
+            channelbandwidth = numpy.array([25e6] * 16 * 33)
+    else:
+        if muser.sub_array == 1:
+            for i in range(16):
+                freq.append(muser.frequency + 25e6 * i)
+            channelbandwidth = numpy.array([25e6] * 16)
+        else:
+            for i in range(33 * 16):
+                freq.append(muser.frequency + 25e6 * i)
+            channelbandwidth = numpy.array([25e6] * 16)
 
-    from astropy.coordinates import solar_system_ephemeris, EarthLocation
-    from astropy.coordinates import get_body_barycentric, get_body, get_moon
-    location = EarthLocation(lon=115.2505, lat=42.211833333, height=1365.0)
+    frequency = numpy.array(freq)
+    integration_time = numpy.array([0.025])
     solar_system_ephemeris.set('de432s')
     phasecentre = get_body('sun', muser.current_frame_utc_time, location)
+
+    # convert phasecentre into ITRS coordinate
+    c_ITRS = phasecentre.transform_to(ITRS(obstime=muser.current_frame_utc_time))
+    local_ha = location.lon - c_ITRS.spherical.lon
+    local_ha.wrap_at(24 * u.hourangle, inplace=True)
+
+    print("Local Hour Angle: {}".format(local_ha.to('rad').value))
+    times = numpy.array([local_ha.to('rad').value])
+
     # phasecentre = SkyCoord(ra=+15.0 * u.deg, dec=-45.0 * u.deg, frame='icrs', equinox='J2000')
 
     # visshape = [ntimes, nants, nants, nchan, npol]
+    utc_time = Time('%04d-%02d-%2dT00:00:00' % (
+        muser.current_frame_utc_time.datetime.year, muser.current_frame_utc_time.datetime.month,
+        muser.current_frame_utc_time.datetime.day), format='isot')
+    print('utc_time:',utc_time)
     bvis = create_blockvisibility(muser_core, times, frequency, phasecentre=phasecentre,
-                                  weight=1.0, polarisation_frame=PolarisationFrame('stokesI'),
-                                  channel_bandwidth=channelbandwidth)
+                                  weight=1.0, polarisation_frame=PolarisationFrame('circularnp'),
+                                  channel_bandwidth=channelbandwidth,
+                                  integration_time = integration_time,
+                                  utc_time=utc_time)
     # Phase Calibration
-    muser.phase_calibration(phase_cal.phasse_data)
+    muser.phase_calibration(phase_cal.phase_data)
 
     # Inject data into blockvisibility
-    bvis.vis[:,...,:] = muser.block_data
+    bvis.vis[:, ...] = muser.block_full_data
     vis_list = []
     vis_list.append(bvis)
-    export_file_name = muser_data_path(data_file_name)+'.ms'
-    # export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
+    export_file_name = muser_data_path(data_file_name) + '.ms'
+    export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
 
     # matplotlib.use('Agg')
 
@@ -174,7 +203,6 @@ def main(args):
     # results_dir="/Users/f.wang"
     # export_image_to_fits(dirty, '%s/imaging_dirty.fits' % (results_dir))
     # export_image_to_fits(psf, '%s/imaging_psf.fits' % (results_dir))
-
 
 
 if __name__ == '__main__':

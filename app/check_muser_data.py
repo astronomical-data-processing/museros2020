@@ -19,12 +19,11 @@ def init_logging():
                         datefmt='%H:%M:%S',
                         level=logging.INFO)
 
-
 def check_data_info():
     data_file_name = 'CSRH_20151122-093500_89058131'
     file_name = muser_data_path(data_file_name)
     muser = MuserData(sub_array = 1, file_name = file_name)
-    if not muser.check_muser_file():
+    if not muser.search_first_file():
         print("Cannot find observational data or not a MUSER file.")
         exit(1)
     print("Checking MUSER File Information V20200801")

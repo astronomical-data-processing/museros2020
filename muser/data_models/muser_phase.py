@@ -15,15 +15,16 @@ log = logging.getLogger('muser')
 
 
 class MuserPhase(object):
-    def __init__(self, sub_array=1, loop_mode=True, obs_date):
+    def __init__(self, sub_array=1, loop_mode=True, obs_date: Time = Time('2015-01-01T00:00:00', format='isot')):
         self.sub_array = sub_array
         self.obs_date = obs_date
         self.is_loop_mode = loop_mode
-        if self.sub_array ==1:
+        if self.sub_array == 1:
             self.antennas = 40
         else:
             self.antennas = 60
         self.sub_channels = 16
+        self.phase_data = numpy.zeros((4, 2, self.antennas * (self.antennas - 1) // 2, 16), dtype='complex')
 
     def load_calibration_data(self, file_name=None):
 
@@ -50,5 +51,3 @@ class MuserPhase(object):
         else:
             log.error("Cannot find calibrated data.")
             return False
-
-

@@ -16,9 +16,13 @@ def list_muser_data(args):
     # data_file_name = 'CSRH_20151122-093500_89058131'
     file_name = muser_data_path(data_file_name)
     muser = MuserData(sub_array = 1, file_name = file_name)
-    if not muser.check_muser_file():
+    if not muser.open_data_file():
         print("Cannot find observational data or not a MUSER file.")
         exit(1)
+    # Read first Frame
+    muser.read_one_frame()
+    # Locate a specified frame
+    muser.search_frame('2015-11-22T09:40:31')
     print("Checking MUSER File Information V20200801")
     print("First Observational Time {}".format(muser.current_frame_time.isot))
     print("Filename {} is a valid MUSER Data File.".format(file_name))

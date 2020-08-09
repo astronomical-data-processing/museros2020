@@ -68,54 +68,14 @@ class MuserFrame(MuserBase):
         self.channel_group = 0
         self.current_frame_time = 0
         self.current_frame_utc_time = 0
-        self.first_frame_time = 0
+        self.initial_frame_time = 0
 
         self.frequency = 1600000000
         self.current_frame_header = MuserFrameHeader()
-        self.if_read_first_frame_time = False
+        self.if_read_initial_frame_time = False
         self.set_array(sub_array)
 
         self.read_number = 0
-
-    # @property
-    # def frequency(self):
-    #     return self.frequency
-    #
-    # @property
-    # def polarization(self):
-    #     return self.polarization
-    #
-    # @property
-    # def obs_time(self):
-    #     return self.current_frame_time
-    #
-    # @property
-    # def filename(self):
-    #     return self.filename
-    #
-    # @filename.setter
-    # def filename(self, file_name):
-    #     self.filename = file_name
-    #
-    # @property
-    # def sub_band(self):
-    #     return self.sub_band
-    #
-    # @property
-    # def obs_target(self):
-    #     return self.obs_target
-    #
-    # @property
-    # def loop_mode(self):
-    #     return self.is_loop_mode
-    #
-    # @property
-    # def array(self):
-    #     return self.sub_array
-    #
-    # @array.setter
-    # def array(self, array):
-    #     self.set_array(array)
 
     def set_array(self, sub_array=1):
         '''
@@ -140,6 +100,7 @@ class MuserFrame(MuserBase):
 
         # To meet the RASCIL, blockvisibility [ntimes, nants, nants, nchan, npol]
         self.block_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels, 1), dtype=complex)
+        self.block_full_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels*self.frame_number, 2), dtype=complex)
 
         self.baseline_data = numpy.zeros(
             shape=(self.antennas * (self.antennas - 1) // 2, self.sub_channels),
@@ -218,6 +179,52 @@ class MuserFrame(MuserBase):
         self.in_file.seek(32, 1)
         return True
 
+    def search_frame(self, search_time):
+        '''
+        search first frame with proper date and time
+        '''
+
+        # if self.search_first_file() == False:
+        #     log.error("Cannot find a proper frame from the observational data.")
+        #     return False
+
+        self.start_date_time = Time(search_time, format='isot')
+        if self.start_date_time < self.current_frame_time:
+            t_offset = self.current_frame_time - self.start_date_time
+        else:
+            t_offset = self.start_date_time - self.current_frame_time
+
+        log.debug('Current frame time: %s' % (self.current_frame_time.isot))
+
+        # Calculate time offset with unit of microsecond
+        time_offset = t_offset.to_value(unit='microsecond')
+
+        # time_offset = t_offset.datetime.second * 1e6 + t_offset.datetime.microsecond
+
+        skip_frame_number = int(time_offset / 3125000) - 1
+
+        log.debug('Time interval %d, skip frames: %d' % (time_offset, skip_frame_number))
+
+        if (skip_frame_number >= 2):
+            self.skip_frames(skip_frame_number)
+
+        # If can find, search first frame
+        while True:
+            if self.is_loop_mode == False:
+                if self.start_date_time <= self.current_frame_time:
+                    break
+            else:
+                if self.is_loop_mode == True and self.start_date_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
+                    break
+                if self.is_loop_mode == False and self.start_date_time <= self.current_frame_time:
+                    break
+
+            if self.read_one_frame() == False:
+                self.in_file.close()
+                return False
+        log.debug('Frame located.')
+        return True
+
     def skip_frames(self, number_of_frames):
         offset = [100000, 204800]
         pos = self.in_file.tell()
@@ -225,9 +232,52 @@ class MuserFrame(MuserBase):
             self.in_file.seek((pos // offset[self.sub_array - 1]) * offset[self.sub_array - 1])
 
         self.in_file.seek(offset[self.sub_array - 1] * number_of_frames, 1)
-        if self.debug:
-            log.debug('Skip %d frames' % (number_of_frames))
+        log.debug('Skip %d frames' % (number_of_frames))
         return True
+
+    def read_full_frame(self, search=True):
+        print(self.current_frame_time, self.current_frame_time, self.sub_band, self.polarization, 0.)
+        if self.is_loop_mode:
+            total_frames = self.frame_number * self.polarization_number
+            frame = 0
+            current_time = self.current_frame_time
+            while frame < total_frames-1:
+                if not self.read_one_frame():
+                    return False
+                print(self.current_frame_time, current_time, self.sub_band, self.polarization,
+                      (self.current_frame_time - current_time).to_value('s'))
+                if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
+                    frame = 0
+                    self.search_first_frame()
+                else:
+                    frame = frame + 1
+                current_time = self.current_frame_time
+            return True
+        else:
+            return self.read_one_frame()
+        pass
+
+    def read_full_frame_with_data(self, search=True):
+        if self.is_loop_mode:
+            total_frames = self.frame_number * self.polarization_number
+            frame = 0
+            current_time = self.current_frame_time
+            self.read_data()
+            while frame < total_frames-1:
+                if not self.read_one_frame():
+                    return False
+                self.read_data()
+                if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
+                    frame = 0
+                    self.search_first_frame()
+                    self.read_data(0)
+                else:
+                    frame = frame + 1
+                current_time = self.current_frame_time
+            return True
+        else:
+            return self.read_one_frame()
+        pass
 
     def read_one_frame(self, search=True):
         if search == True:
@@ -241,13 +291,12 @@ class MuserFrame(MuserBase):
 
         self.current_frame_time = self.convert_time(tmp_time)
         # if self.Debug:
-        if self.debug:
-            log.debug("Read frame date and time: %s " % self.current_frame_time.get_string())
+        log.debug("Read frame date and time: %s " % self.current_frame_time.isot)
 
         self.current_frame_date_time = self.current_frame_time
-        if self.if_read_first_frame_time == False:
-            self.first_frame_time = self.current_frame_time
-            self.if_read_first_frame_time = True
+        if self.if_read_initial_frame_time == False:
+            self.initial_frame_time = self.current_frame_time
+            self.if_read_initial_frame_time = True
 
         obs_time = self.current_frame_time.isot
 
@@ -395,6 +444,7 @@ class MuserFrame(MuserBase):
             'Read header info - time: %s - array:%d band:%d polization:%d frequence:%d' % (
                 self.current_frame_time.isot, self.real_sub_array, self.sub_band, self.polarization,
                 self.frequency))
+        return True
 
     def read_data(self):
         if self.sub_array == 1:
@@ -416,18 +466,14 @@ class MuserFrame(MuserBase):
                         if (antenna1 < self.antennas - 1 and antenna2 < self.antennas):
                             self.block_data[0, antenna1, antenna2, channel, 0] = c1
                             self.block_data[0, antenna1, antenna2, channel + 1, 0] = c2
+                            self.block_full_data[0, antenna1, antenna2, self.sub_band*16+channel, 1 - self.polarization] = c1
+                            self.block_full_data[0, antenna1, antenna2, self.sub_band*16+channel + 1, 1-self.polarization] = c2
 
                             self.baseline_data[bl][channel] = c1
                             self.baseline_data_flag[bl][channel] = True
 
                             self.baseline_data[bl][channel + 1] = c2
                             self.baseline_data_flag[bl][channel + 1] = True
-                            # if channel==8:
-                            #     a = ('%3d%5d%5d  %20.5f %20.5f\n')%(channel, antenna1, antenna2, self.baseline_data[bl][channel].real,self.baseline_data[bl][channel].imag)
-                            #     b = ('%3d%5d%5d  %20.5f %20.5f\n')%(channel+1, antenna1, antenna2, self.baseline_data[bl][channel+1].real,self.baseline_data[bl][channel+1].imag)
-                            #     print(a)
-                            #     file1.writelines(a)
-                            #     file1.writelines(b)
 
                             bl = bl + 1
 
@@ -500,6 +546,9 @@ class MuserFrame(MuserBase):
                         if antenna2 < self.antennas:
                             self.baseline_data[bl1][channel] = visbility[bl2]  # write data to baseline_data
                             self.baseline_data_flag[bl1][channel] = True
+                            self.block_data[0, antenna1, antenna2, channel, 0] = visbility[bl2]
+                            self.block_full_data[0, antenna1, antenna2, self.sub_band*16+channel, 1 - self.polarization] = visbility[bl2]
+
                             bl1 += 1
                         bl2 += 1
 
@@ -544,4 +593,3 @@ class MuserFrame(MuserBase):
             log.error("Cannot find observational data.")
             return str(False), []
         self.seek_frame_header()
-

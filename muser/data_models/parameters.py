@@ -54,7 +54,7 @@ spectral_mode           Visibility processing mode          'mfs' or 'channel'
 """
 
 __all__ = ['muser_path', 'muser_data_path', 'get_parameter', 'IF_BANDWIDTH', 'LOOP_MODE_LOW', 'NON_LOOP_MODE_LOW',
-           'LOOP_MODE_HIGH','NON_LOOP_MODE_HIGH']
+           'LOOP_MODE_HIGH', 'NON_LOOP_MODE_HIGH']
 
 import logging
 import os
@@ -129,6 +129,22 @@ def muser_path(path):
     return os.path.join(muserhome, path)
 
 
+def muser_data_list(path=None):
+    """Retrieve file lists
+
+    :param path:
+    :return file list
+    """
+    if path is None:
+        return []
+    file_list = []
+    files = os.listdir(path)
+    for file in files:
+        if (file[0:4] == 'CSRH') and ('.' not in file):
+            file_list.append(file)
+    return file_list
+
+
 def muser_data_path(path=None, check=True):
     """Converts a path that might be relative to the muser data directory into an
     absolute path::
@@ -149,8 +165,10 @@ def muser_data_path(path=None, check=True):
     if check:
         if not os.path.exists(dp):
             raise EnvironmentError("MUSER data directory {} does not exist".format(dp))
-    dp = os.path.join(dp, path)
+    if path is not None:
+        dp = os.path.join(dp, path)
     return dp
+
 
 def get_parameter(kwargs, key, default=None):
     """ Get a specified named value for this (calling) function

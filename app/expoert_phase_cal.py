@@ -44,7 +44,7 @@ class Phase:
         if self.obs_date_time is not None:
             muser_calibration.set_data_date_time(self.obs_date_time)
         log.info('Reading Visibility Data of calibration......')
-        if not muser_calibration.check_muser_file():
+        if not muser_calibration.open_data_file():
             print("Cannot find observational data or not a MUSER file.")
             exit(1)
 
@@ -99,7 +99,7 @@ class Phase:
         file_name = muser_data_path("MUSER%1d-%04d%02d%02d.CAL"%(self.sub_array,self.year, self.month, self.day))
         log.info("Writing to file: " + os.path.basename(file_name))
         calibration_Data.tofile(file_name)
-        log.info("Exportphase done.")
+        log.info("Export phase done.")
         return True
 
 def export_phase(args):
