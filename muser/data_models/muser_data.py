@@ -17,7 +17,7 @@ log = logging.getLogger('muser')
 
 
 class MuserData(MuserFrame):
-    def __init__(self, sub_array=1, file_name = None):
+    def __init__(self, sub_array=1, file_name = None, start_time = None):
 
         super(MuserData, self).__init__(sub_array=1)
         if file_name is not None:
@@ -33,8 +33,9 @@ class MuserData(MuserFrame):
 
         self.current_file_name = ''
         self.file_list = []
-        # self.start_date_time = MuserTime()
-        # self.initial_frame_time = MuserTime()
+        if start_time is not None:
+            self.start_date_time = Time(start_time, format='isot')
+            # self.first_frame_time = Time(start_time, format='isot')
 
     def __del__(self):
         self.close_raw_file()
@@ -45,7 +46,7 @@ class MuserData(MuserFrame):
 
     def set_data_date_time(self, time):
         self.start_date_time = time
-        self.initial_frame_time = time
+        self.first_frame_time = time
 
         # set True to if_time_setup
         self.if_time_setup = True
@@ -76,7 +77,7 @@ class MuserData(MuserFrame):
         '''
         if len(frame_time) == 0:
             return False
-        self.initial_frame_time = Time(frame_time,format='isot')
+        self.first_date_time = Time(frame_time,format='isot')
 
         if self.open_data_file() == False:
             log.error("Cannot open observational data.")
@@ -110,7 +111,7 @@ class MuserData(MuserFrame):
             return True
 
     def open_next_file(self, time_minute=1):
-        search_date_time = self.initial_frame_time + time_minute * u.minute
+        search_date_time = self.first_frame_time + time_minute * u.minute
 
         full_file_name = self.muser_data_file_name(self.search_date_time.datetime.year,
                                                    self.search_date_time.datetime.month,
@@ -164,11 +165,11 @@ class MuserData(MuserFrame):
         finally:
             pass
 
-    def open_data_file(self, file_name=None):
+    def open_data_file(self):
         if self.input_file_name == '':
-            full_file_name = self.muser_data_file_name(self.initial_frame_time.datetime.year, self.initial_frame_time.datetime.month,
-                                                  self.initial_frame_time.datetime.day, self.initial_frame_time.datetime.hour,
-                                                  self.initial_frame_time.datetime.minute)
+            full_file_name = self.muser_data_file_name(self.start_date_time.datetime.year, self.start_date_time.datetime.month,
+                                                  self.start_date_time.datetime.day, self.start_date_time.datetime.hour,
+                                                  self.start_date_time.datetime.minute)
         else:
             full_file_name = self.input_file_name
 
@@ -180,7 +181,7 @@ class MuserData(MuserFrame):
         '''
 
         if self.search_first_file() == False:
-            log.error("Cannot find a proper frame from the observational data.")
+            log.error("Search first frame: Cannot find a proper frame from the observational data.")
             return False
 
         frame_date_time = self.current_frame_time
@@ -205,7 +206,7 @@ class MuserData(MuserFrame):
                 if self.start_date_time <= self.current_frame_time:
                     break
             else:
-                if self.is_loop_mode == True and self.start_date_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
+                if self.is_loop_mode and self.start_date_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
                     break
                 if self.is_loop_mode == False and self.start_date_time <= self.current_frame_time:
                     break
@@ -215,6 +216,49 @@ class MuserData(MuserFrame):
                 return False
         log.debug('Frame located.')
         return True
+
+    def read_full_frame(self, search=True):
+        print(self.current_frame_time, self.current_frame_time, self.sub_band, self.polarization, 0.)
+        if self.is_loop_mode:
+            total_frames = self.frame_number * self.polarization_number
+            frame = 0
+            current_time = self.current_frame_time
+            while frame < total_frames-1:
+                if not self.read_one_frame():
+                    return False
+                print(self.current_frame_time, current_time, self.sub_band, self.polarization,
+                      (self.current_frame_time - current_time).to_value('s'))
+                if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
+                    frame = 0
+                    self.search_first_frame()
+                else:
+                    frame = frame + 1
+                current_time = self.current_frame_time
+            return True
+        else:
+            return self.read_one_frame()
+        pass
+
+    def read_full_frame_with_data(self, search=True):
+        if self.is_loop_mode:
+            total_frames = self.frame_number * self.polarization_number
+            frame = 0
+            current_time = self.current_frame_time
+            self.read_data()
+            while frame < total_frames-1:
+                if not self.read_one_frame():
+                    return False
+                self.read_data()
+                if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
+                    frame = 0
+                    self.search_first_frame()
+                    self.read_data(0)
+                else:
+                    frame = frame + 1
+                current_time = self.current_frame_time
+            return True
+        else:
+            return self.read_one_frame()
 
     def search_frame_realtime(self, specified_file=False):
         '''
@@ -320,6 +364,27 @@ class MuserData(MuserFrame):
                     bl = bl + 1
 
         log.debug("Delay Process and fringe stopping... Done.")
+
+    def count_frame_number(self, time_start, time_end):
+        self.start_frame_time = Time(time_start, format='isot')
+        # if not self.search_first_file(time_start):
+        #     log.error("CFN: Cannot find observational data or not a MUSER file.")
+        #     return -1
+        # # Check data
+        # if not self.search_frame(time_start):
+        #     log.error("Cannot locate the specified frame")
+        #     return -1
+        count = 0
+        while True:
+            if self.read_full_frame():
+                count = count + 1
+                if self.current_frame_time > Time(time_end, format='isot'):
+                    break
+                if not self.read_one_frame():
+                    break
+            else:
+                break
+        return count
 
     def phase_calibration(self, cal):
         log.debug("Satellite phase correction")

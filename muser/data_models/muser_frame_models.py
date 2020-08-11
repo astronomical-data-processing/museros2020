@@ -68,11 +68,11 @@ class MuserFrame(MuserBase):
         self.channel_group = 0
         self.current_frame_time = 0
         self.current_frame_utc_time = 0
-        self.initial_frame_time = 0
+        self.first_frame_time = 0
 
         self.frequency = 1600000000
         self.current_frame_header = MuserFrameHeader()
-        self.if_read_initial_frame_time = False
+        self.if_read_first_frame_time = False
         self.set_array(sub_array)
 
         self.read_number = 0
@@ -187,12 +187,11 @@ class MuserFrame(MuserBase):
         # if self.search_first_file() == False:
         #     log.error("Cannot find a proper frame from the observational data.")
         #     return False
-
-        self.start_date_time = Time(search_time, format='isot')
-        if self.start_date_time < self.current_frame_time:
-            t_offset = self.current_frame_time - self.start_date_time
+        start_date_time = Time(search_time, format='isot')
+        if start_date_time < self.current_frame_time:
+            t_offset = self.current_frame_time - start_date_time
         else:
-            t_offset = self.start_date_time - self.current_frame_time
+            t_offset = self.start_date_time - current_frame_time
 
         log.debug('Current frame time: %s' % (self.current_frame_time.isot))
 
@@ -211,17 +210,18 @@ class MuserFrame(MuserBase):
         # If can find, search first frame
         while True:
             if self.is_loop_mode == False:
-                if self.start_date_time <= self.current_frame_time:
+                if start_date_time <= self.current_frame_time:
                     break
             else:
-                if self.is_loop_mode == True and self.start_date_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
+                if self.is_loop_mode == True and start_date_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
                     break
-                if self.is_loop_mode == False and self.start_date_time <= self.current_frame_time:
+                if self.is_loop_mode == False and start_date_time <= self.current_frame_time:
                     break
 
             if self.read_one_frame() == False:
                 self.in_file.close()
                 return False
+
         log.debug('Frame located.')
         return True
 
@@ -234,50 +234,6 @@ class MuserFrame(MuserBase):
         self.in_file.seek(offset[self.sub_array - 1] * number_of_frames, 1)
         log.debug('Skip %d frames' % (number_of_frames))
         return True
-
-    def read_full_frame(self, search=True):
-        print(self.current_frame_time, self.current_frame_time, self.sub_band, self.polarization, 0.)
-        if self.is_loop_mode:
-            total_frames = self.frame_number * self.polarization_number
-            frame = 0
-            current_time = self.current_frame_time
-            while frame < total_frames-1:
-                if not self.read_one_frame():
-                    return False
-                print(self.current_frame_time, current_time, self.sub_band, self.polarization,
-                      (self.current_frame_time - current_time).to_value('s'))
-                if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
-                    frame = 0
-                    self.search_first_frame()
-                else:
-                    frame = frame + 1
-                current_time = self.current_frame_time
-            return True
-        else:
-            return self.read_one_frame()
-        pass
-
-    def read_full_frame_with_data(self, search=True):
-        if self.is_loop_mode:
-            total_frames = self.frame_number * self.polarization_number
-            frame = 0
-            current_time = self.current_frame_time
-            self.read_data()
-            while frame < total_frames-1:
-                if not self.read_one_frame():
-                    return False
-                self.read_data()
-                if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
-                    frame = 0
-                    self.search_first_frame()
-                    self.read_data(0)
-                else:
-                    frame = frame + 1
-                current_time = self.current_frame_time
-            return True
-        else:
-            return self.read_one_frame()
-        pass
 
     def read_one_frame(self, search=True):
         if search == True:
@@ -294,9 +250,9 @@ class MuserFrame(MuserBase):
         log.debug("Read frame date and time: %s " % self.current_frame_time.isot)
 
         self.current_frame_date_time = self.current_frame_time
-        if self.if_read_initial_frame_time == False:
-            self.initial_frame_time = self.current_frame_time
-            self.if_read_initial_frame_time = True
+        if self.if_read_first_frame_time == False:
+            self.first_frame_time = self.current_frame_time
+            self.if_read_first_frame_time = True
 
         obs_time = self.current_frame_time.isot
 

@@ -22,37 +22,22 @@ def init_logging():
 
 
 def count_frame_number(time_start, time_end):
-    muser = MuserData(sub_array=1)
+    muser = MuserData(sub_array=1, start_time=time_start)
     if not muser.init_data_environment():
         print("No data environment prepared, exit.")
         return -1
-    if not muser.search_first_file(frame_time=time_start):
+
+    if not muser.search_first_file(time_start):
         print("Cannot find observational data or not a MUSER file.")
         return -1
     print("Checking MUSER File Information V20200801")
     print("First Observational Time (utc): {}".format(muser.current_frame_time.isot))
     print("Filename {} is a valid MUSER Data File.".format(muser.current_file_name))
-    # Check data
     if not muser.search_frame(time_start):
         print("Cannot locate the specified frame")
         return -1
-    count = 0
-    while True:
-        if muser.read_full_frame():
-            count = count + 1
-            if muser.current_frame_time > Time(time_end,format='isot'):
-                break
-            if not muser.read_one_frame():
-                break
-        # print("Current Observational Time {}".format(muser.current_frame_time.isot))
-        # print("Observational Mode: {} \nFrequency {}".format("LOOP" if muser.is_loop_mode else "Non Loop",
-        #                                                      muser.frequency))
-        # print("Sub Band: {} - Sub Channel {}".format(muser.sub_band, muser.sub_channels))
-        else:
-            break
-    return count
-
+    return (muser.count_frame_number(time_start, time_end))
 
 if __name__ == '__main__':
     # init_logging()
-    print("Total Full Frames: %d" % (count_frame_number('2015-11-22T12:45:30', '2015-11-22T12:46:10')))
+    print("Total Full Frames: %d" % (count_frame_number('2015-11-22T12:50:30', '2015-11-22T12:51:10')))
