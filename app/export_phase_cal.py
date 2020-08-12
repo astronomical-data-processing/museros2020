@@ -51,7 +51,6 @@ class Phase:
         # Search Head of Full frame
         muser_calibration.search_next_full_frame_head()
 
-
         self.last_sub_band = -1
         self.last_polarization = -1
 
@@ -64,8 +63,8 @@ class Phase:
                 dtype=complex)
             block_full_data = numpy.zeros(
                 [1, muser_calibration.antennas, muser_calibration.antennas,
-                 muser_calibration.channels * muser_calibration.frame_number,
-                 muser_calibration.polarization], dtype='complex')
+                 muser_calibration.sub_channels * muser_calibration.frame_number,
+                 2], dtype='complex')
         else:
             frame_NUM = 1
             calibration_Data = numpy.ndarray(
@@ -100,6 +99,13 @@ class Phase:
 
             self.last_sub_band = muser_calibration.sub_band
             self.last_polarization = muser_calibration.polarization
+
+            # inject data
+            if self.is_loop_mode:
+                block_full_data[0, :, :, muser_calibration.sub_band * 16:muser_calibration.sub_band * 16 + 16,
+                    1 - muser_calibration.polarization] = muser_calibration.block_data[0, :, :, 0:16, 0]
+            else:
+                block_full_data[0, :, :, :, 0] = muser_calibration.block_data[0, :, :, :, 0]
 
             bl = 0
             for antenna1 in range(0, muser_calibration.antennas - 1):

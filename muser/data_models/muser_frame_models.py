@@ -79,7 +79,7 @@ class MuserFrame(MuserBase):
 
         # ntimes x antenna x antenna x channels x polarization
         self.block_data = numpy.zeros(
-            (1, self.antennas, self.antennas, self.sub_channels * self.frame_number, 1), dtype=complex)
+            (1, self.antennas, self.antennas, self.sub_channels, 1), dtype=complex)
 
     def set_array(self, sub_array=1):
         '''
