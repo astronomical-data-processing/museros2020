@@ -82,6 +82,8 @@ def main(args):
         muser_array = 'MUSER1'
     else:
         muser_array = 'MUSER2'
+    start_time = args.start
+    end_time = args.end
 
     location = EarthLocation(lon=115.2505*u.deg, lat=42.211833333*u.deg, height=1365.0*u.m)
 
@@ -89,12 +91,17 @@ def main(args):
     if not muser.init_data_environment():
         print("No data environment prepared, exit.")
         return -1
-    if not muser.search_first_file(frame_time='2015-11-22T12:50:30'):
+    if not muser.search_first_file(frame_time=start):
         print("Cannot find observational data or not a MUSER file.")
         return -1
     data_file_name = muser.current_file_name
     print("Checking MUSER File Information V20200801")
     print("First Observational Time {}".format(muser.current_frame_time.isot))
+
+    # count total frames
+    total_frames = muser.count_frame_number(start_time, end_time)
+    # create z xsllll
+    muser.set_data_buffer(total_frames=total_frames)
 
     # Load Phase Calibration Data
     phase_cal = MuserPhase(muser.sub_array, muser.is_loop_mode, muser.current_frame_time)
@@ -214,5 +221,7 @@ if __name__ == '__main__':
     parser.add_argument('-f', "--file", type=str, default='', help='The file name')
     parser.add_argument('-l', "--line", type=int, default=1, help='The number of frames')
     parser.add_argument('-s', "--start", type=str, default='', help='The beginning time ')
+    parser.add_argument('-e', "--end", type=str, default='', help='The end time ')
+
 
     main(parser.parse_args())

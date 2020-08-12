@@ -19,6 +19,7 @@ from astropy.time import Time
 
 log = logging.getLogger('muser')
 
+
 class Phase:
     def __init__(self, sub_array=None, is_loop_mode=None, obs_date_time=None, frame_number=None, file_name=None):
         self.sub_array = sub_array
@@ -30,7 +31,7 @@ class Phase:
             self.obs_date_time = None
         self.is_loop_mode = is_loop_mode
 
-        if obs_date_time is not None and len(obs_date_time)>0:
+        if obs_date_time is not None and len(obs_date_time) > 0:
             log.info("Searched phase data date and time: %s" % obs_date_time)
 
         self.file_name = file_name.strip()
@@ -40,15 +41,17 @@ class Phase:
             log.error("You should input a positive number!")
             return False
         file_name = muser_data_path(self.file_name)
-        muser_calibration = MuserData(self.sub_array, file_name)
-        if self.obs_date_time is not None:
-            muser_calibration.set_data_date_time(self.obs_date_time)
+        muser_calibration = MuserData(sub_array=self.sub_array, file_name=file_name, start_time=self.obs_date_time)
         log.info('Reading Visibility Data of calibration......')
         if not muser_calibration.open_data_file():
             print("Cannot find observational data or not a MUSER file.")
             exit(1)
-
+        # Setup reading buffer
         muser_calibration.skip_frames(self.frame_number)
+        # Search Head of Full frame
+        muser_calibration.search_next_full_frame_head()
+
+
         self.last_sub_band = -1
         self.last_polarization = -1
 
@@ -59,11 +62,18 @@ class Phase:
                 shape=(muser_calibration.frame_number, muser_calibration.polarization_number,
                        muser_calibration.antennas * (muser_calibration.antennas - 1) // 2, 16),
                 dtype=complex)
+            block_full_data = numpy.zeros(
+                [1, muser_calibration.antennas, muser_calibration.antennas,
+                 muser_calibration.channels * muser_calibration.frame_number,
+                 muser_calibration.polarization], dtype='complex')
         else:
             frame_NUM = 1
             calibration_Data = numpy.ndarray(
                 shape=(muser_calibration.antennas * (muser_calibration.antennas - 1) // 2, 16),
                 dtype=complex)
+            block_full_data = numpy.zeros(
+                [1, muser_calibration.antennas, muser_calibration.antennas, muser_calibration.channels, 1],
+                dtype='complex')
 
         for i in range(frame_NUM):
             if (muser_calibration.read_one_frame() == False):  # 32*8bits
@@ -74,16 +84,21 @@ class Phase:
             self.year = muser_calibration.current_frame_time.datetime.year
             self.month = muser_calibration.current_frame_time.datetime.month
             self.day = muser_calibration.current_frame_time.datetime.day
+            print("Reading No. %d %s %d %d" % (
+                i, muser_calibration.current_frame_time.isot, muser_calibration.sub_band,
+                muser_calibration.polarization))
+            log.info("Reading No. %d %s %d %d" % (
+                i, muser_calibration.current_frame_time.isot, muser_calibration.sub_band,
+                muser_calibration.polarization))
 
-            log.info("Reading No. %d %s %d %d" % (i, muser_calibration.current_frame_time.isot, muser_calibration.sub_band, muser_calibration.polarization))
-            #According to the DISCUSSION with LJ.Chen
-            #muser_calibration.delay_process('satellite')
             # Delay processing for satellite
             if self.sub_array == 2:
                 if muser_calibration.current_frame_header.strip_switch == 0xCCCCCCCC:
                     muser_calibration.delay_process("satellite")
+            else:
+                muser_calibration.delay_process('satellite')
 
-            self.last_sub_band =  muser_calibration.sub_band
+            self.last_sub_band = muser_calibration.sub_band
             self.last_polarization = muser_calibration.polarization
 
             bl = 0
@@ -91,16 +106,18 @@ class Phase:
                 for antenna2 in range(antenna1 + 1, muser_calibration.antennas):
                     for channel in range(0, muser_calibration.sub_channels):
                         if self.is_loop_mode == True:
-                            calibration_Data[muser_calibration.sub_band][muser_calibration.polarization][bl][channel] = muser_calibration.baseline_data[bl][channel]
+                            calibration_Data[muser_calibration.sub_band][muser_calibration.polarization][bl][channel] = \
+                                muser_calibration.baseline_data[bl][channel]
                         else:
                             calibration_Data[bl][channel] = muser_calibration.baseline_data[bl][channel]
                     bl = bl + 1
 
-        file_name = muser_data_path("MUSER%1d-%04d%02d%02d.CAL"%(self.sub_array,self.year, self.month, self.day))
+        file_name = muser_data_path("MUSER%1d-%04d%02d%02d.CAL" % (self.sub_array, self.year, self.month, self.day))
         log.info("Writing to file: " + os.path.basename(file_name))
         calibration_Data.tofile(file_name)
         log.info("Export phase done.")
         return True
+
 
 def export_phase(args):
     muser = args.muser
@@ -112,6 +129,7 @@ def export_phase(args):
     cal = Phase(muser, loop_mode, start, frame, input_file)
     cal.calibration()
 
+
 if __name__ == '__main__':
     import argparse
 
@@ -121,11 +139,6 @@ if __name__ == '__main__':
     parser.add_argument('-l', "--loop", type=bool, default=True, help='Loop Mode')
     parser.add_argument('-s', "--start", type=str, default=None, help='The beginning time')
     parser.add_argument('-c', "--calib", type=str, default='', help='The beginning time')
-    parser.add_argument('-n', "--number", type=int, default=1, help='The number of frames')
+    parser.add_argument('-n', "--number", type=int, default=0, help='The number of skipped-frames')
 
     export_phase(parser.parse_args())
-
-
-
-
-

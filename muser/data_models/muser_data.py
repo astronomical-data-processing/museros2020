@@ -17,9 +17,9 @@ log = logging.getLogger('muser')
 
 
 class MuserData(MuserFrame):
-    def __init__(self, sub_array=1, file_name = None, start_time = None):
+    def __init__(self, sub_array=1, mode=True, file_name = None, start_time = None):
 
-        super(MuserData, self).__init__(sub_array=1)
+        super(MuserData, self).__init__(sub_array=sub_array, mode=mode)
         if file_name is not None:
             self.input_file_name = file_name
         self.if_time_setup = False
@@ -33,6 +33,9 @@ class MuserData(MuserFrame):
 
         self.current_file_name = ''
         self.file_list = []
+        self.if_file_opened = False
+        if file_name is not None:
+            self.input_file_name = file_name
         if start_time is not None:
             self.start_date_time = Time(start_time, format='isot')
             # self.first_frame_time = Time(start_time, format='isot')
@@ -44,9 +47,9 @@ class MuserData(MuserFrame):
     # def filename(self, name):
     #     self.filename = name
 
-    def set_data_date_time(self, time):
-        self.start_date_time = time
-        self.first_frame_time = time
+    def set_date_time(self, time):
+        self.start_date_time = Time(time, format='isot')
+        self.first_frame_time = Time(time, format='isot')
 
         # set True to if_time_setup
         self.if_time_setup = True
@@ -150,6 +153,7 @@ class MuserData(MuserFrame):
             self.in_file.seek(0, 0)
             self.if_read_first_frame_time = False
             self.current_file_name = file_name
+            self.if_file_opened = True
             log.debug("File opened: %s" % (os.path.basename(file_name)))
         except:
             # self.in_file.close()
@@ -161,7 +165,8 @@ class MuserData(MuserFrame):
 
     def close_raw_file(self):
         try:
-            self.in_file.close()
+            if self.if_file_opened:
+                self.in_file.close()
         finally:
             pass
 
@@ -218,7 +223,7 @@ class MuserData(MuserFrame):
         return True
 
     def read_full_frame(self, search=True):
-        print(self.current_frame_time, self.current_frame_time, self.sub_band, self.polarization, 0.)
+        # print(self.current_frame_time, self.current_frame_time, self.sub_band, self.polarization, 0.)
         if self.is_loop_mode:
             total_frames = self.frame_number * self.polarization_number
             frame = 0
@@ -226,8 +231,8 @@ class MuserData(MuserFrame):
             while frame < total_frames-1:
                 if not self.read_one_frame():
                     return False
-                print(self.current_frame_time, current_time, self.sub_band, self.polarization,
-                      (self.current_frame_time - current_time).to_value('s'))
+                # print(self.current_frame_time, current_time, self.sub_band, self.polarization,
+                #       (self.current_frame_time - current_time).to_value('s'))
                 if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
                     frame = 0
                     self.search_first_frame()
@@ -237,7 +242,6 @@ class MuserData(MuserFrame):
             return True
         else:
             return self.read_one_frame()
-        pass
 
     def read_full_frame_with_data(self, search=True):
         if self.is_loop_mode:
