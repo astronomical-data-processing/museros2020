@@ -17,7 +17,7 @@ log = logging.getLogger('muser')
 
 
 class MuserData(MuserFrame):
-    def __init__(self, sub_array=1, mode=True, file_name = None, start_time = None):
+    def __init__(self, sub_array=1, mode=True, file_name=None, start_time=None):
 
         super(MuserData, self).__init__(sub_array=sub_array, mode=mode)
         if file_name is not None:
@@ -74,13 +74,13 @@ class MuserData(MuserFrame):
             if self.open_data_file() == False:
                 return False
 
-    def search_first_file(self, frame_time = ''):
+    def search_first_file(self, frame_time=''):
         '''
         search the first file of processing
         '''
         if len(frame_time) == 0:
             return False
-        self.first_date_time = Time(frame_time,format='isot')
+        self.start_date_time = Time(frame_time, format='isot')
 
         if self.open_data_file() == False:
             log.error("Cannot open observational data.")
@@ -114,7 +114,8 @@ class MuserData(MuserFrame):
             return True
 
     def open_next_file(self, time_minute=1):
-        search_date_time = self.first_frame_time + time_minute * u.minute
+        # WFWFWF
+        search_date_time = self.start_frame_time + time_minute * u.minute
 
         full_file_name = self.muser_data_file_name(self.search_date_time.datetime.year,
                                                    self.search_date_time.datetime.month,
@@ -151,7 +152,6 @@ class MuserData(MuserFrame):
         try:
             self.in_file = open(file_name, 'rb')
             self.in_file.seek(0, 0)
-            self.if_read_first_frame_time = False
             self.current_file_name = file_name
             self.if_file_opened = True
             log.debug("File opened: %s" % (os.path.basename(file_name)))
@@ -172,9 +172,11 @@ class MuserData(MuserFrame):
 
     def open_data_file(self):
         if self.input_file_name == '':
-            full_file_name = self.muser_data_file_name(self.start_date_time.datetime.year, self.start_date_time.datetime.month,
-                                                  self.start_date_time.datetime.day, self.start_date_time.datetime.hour,
-                                                  self.start_date_time.datetime.minute)
+            full_file_name = self.muser_data_file_name(self.start_date_time.datetime.year,
+                                                       self.start_date_time.datetime.month,
+                                                       self.start_date_time.datetime.day,
+                                                       self.start_date_time.datetime.hour,
+                                                       self.start_date_time.datetime.minute)
         else:
             full_file_name = self.input_file_name
 
@@ -212,8 +214,10 @@ class MuserData(MuserFrame):
                     break
             else:
                 if self.is_loop_mode and self.start_date_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
+                    self.first_frame_time = self.current_frame_time
                     break
                 if self.is_loop_mode == False and self.start_date_time <= self.current_frame_time:
+                    self.first_frame_time = self.current_frame_time
                     break
 
             if self.read_one_frame() == False:
@@ -228,12 +232,12 @@ class MuserData(MuserFrame):
             total_frames = self.frame_number * self.polarization_number
             frame = 0
             current_time = self.current_frame_time
-            while frame < total_frames-1:
+            while frame < total_frames - 1:
                 if not self.read_one_frame():
                     return False
                 # print(self.current_frame_time, current_time, self.sub_band, self.polarization,
                 #       (self.current_frame_time - current_time).to_value('s'))
-                if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
+                if (self.current_frame_time - current_time).to_value('s') >= 4 / 1000.:
                     frame = 0
                     self.search_first_frame()
                 else:
@@ -249,11 +253,11 @@ class MuserData(MuserFrame):
             frame = 0
             current_time = self.current_frame_time
             self.read_data()
-            while frame < total_frames-1:
+            while frame < total_frames - 1:
                 if not self.read_one_frame():
                     return False
                 self.read_data()
-                if (self.current_frame_time - current_time).to_value('s') >= 4/1000. :
+                if (self.current_frame_time - current_time).to_value('s') >= 4 / 1000.:
                     frame = 0
                     self.search_first_frame()
                     self.read_data(0)
@@ -339,45 +343,38 @@ class MuserData(MuserFrame):
                         Frf = (self.frequency * 1e-6 + channel * 25 + parameter) / 1000.0
                         Fif = (channel * 25 + parameter + 50.0) / 1000.0
                         phai = 2 * numpy.pi * (Frf * tg - Fif * tg0)
-                        self.block_data[0, antenna1, antenna2, channel, 0] = complex(
-                            self.block_data[0, antenna1, antenna2, channel, 0].real * numpy.cos(phai) +
-                            self.block_data[0, antenna1, antenna2, channel, 0].imag * numpy.sin(phai),
-                            self.block_data[0, antenna1, antenna2, channel, 0].imag * numpy.cos(phai) -
-                            self.block_data[0, antenna1, antenna2, channel, 0].real * numpy.sin(phai))
-                        self.baseline_data[bl][channel] = complex(
-                            self.baseline_data[bl][channel].real * numpy.cos(phai) +
-                            self.baseline_data[bl][channel].imag * numpy.sin(phai),
-                            self.baseline_data[bl][channel].imag * numpy.cos(phai) -
-                            self.baseline_data[bl][channel].real * numpy.sin(phai))
+                        self.block_data[antenna1, antenna2, channel] = complex(
+                            self.block_data[antenna1, antenna2, channel].real * numpy.cos(phai) +
+                            self.block_data[antenna1, antenna2, channel].imag * numpy.sin(phai),
+                            self.block_data[antenna1, antenna2, channel].imag * numpy.cos(phai) -
+                            self.block_data[antenna1, antenna2, channel].real * numpy.sin(phai))
+                        # self.baseline_data[bl][channel] = complex(
+                        #     self.baseline_data[bl][channel].real * numpy.cos(phai) +
+                        #     self.baseline_data[bl][channel].imag * numpy.sin(phai),
+                        #     self.baseline_data[bl][channel].imag * numpy.cos(phai) -
+                        #     self.baseline_data[bl][channel].real * numpy.sin(phai))
                     else:
                         Frf = (self.frequency * 1e-6 + (15 - channel) * 25 + parameter) / 1000.0
                         Fif = (channel * 25 + parameter + 50.0) / 1000.0  # local frequency(GHz)
                         phai = 2 * numpy.pi * (-Frf * tg - Fif * tg0)
                         # phai = 2 * pi * Fif * tg0 + 2 * pi * Frf * (tg - tg0)
-                        self.block_data[0, antenna1, antenna2, channel, 0] = complex(
-                            self.block_data[0, antenna1, antenna2, channel, 0].real * numpy.cos(phai) +
-                            self.block_data[0, antenna1, antenna2, channel, 0].imag * numpy.sin(phai),
-                            self.block_data[0, antenna1, antenna2, channel, 0].imag * (-1) * numpy.cos(phai) +
-                            self.block_data[0, antenna1, antenna2, channel, 0].real * numpy.sin(phai))
+                        self.block_data[antenna1, antenna2, channel] = complex(
+                            self.block_data[antenna1, antenna2, channel].real * numpy.cos(phai) +
+                            self.block_data[antenna1, antenna2, channel].imag * numpy.sin(phai),
+                            self.block_data[antenna1, antenna2, channel].imag * numpy.cos(phai) -
+                            self.block_data[antenna1, antenna2, channel].real * numpy.sin(phai))
 
-                        self.baseline_data[bl][channel] = complex(
-                            self.baseline_data[bl][channel].real * numpy.cos(phai) +
-                            self.baseline_data[bl][channel].imag * numpy.sin(phai),
-                            self.baseline_data[bl][channel].imag * (-1) * numpy.cos(phai) +
-                            self.baseline_data[bl][channel].real * numpy.sin(phai))
+                        # self.baseline_data[bl][channel] = complex(
+                        #     self.baseline_data[bl][channel].real * numpy.cos(phai) +
+                        #     self.baseline_data[bl][channel].imag * numpy.sin(phai),
+                        #     self.baseline_data[bl][channel].imag * (-1) * numpy.cos(phai) +
+                        #     self.baseline_data[bl][channel].real * numpy.sin(phai))
                     bl = bl + 1
 
         log.debug("Delay Process and fringe stopping... Done.")
 
     def count_frame_number(self, time_start, time_end):
         self.start_frame_time = Time(time_start, format='isot')
-        # if not self.search_first_file(time_start):
-        #     log.error("CFN: Cannot find observational data or not a MUSER file.")
-        #     return -1
-        # # Check data
-        # if not self.search_frame(time_start):
-        #     log.error("Cannot locate the specified frame")
-        #     return -1
         count = 0
         while True:
             if self.read_full_frame():
@@ -391,44 +388,58 @@ class MuserData(MuserFrame):
         return count
 
     def phase_calibration(self, cal):
+
         log.debug("Satellite phase correction")
-
+        cal = cal.reshape(self.block_data.shape)
         if self.sub_array == 1:
-            for chan in range(0, self.sub_channels):
-                bl = 0
-                for antenna1 in range(0, self.antennas - 1):
-                    for antenna2 in range(antenna1 + 1, self.antennas):
-                        A = numpy.sqrt(
-                            self.baseline_data[bl][chan].imag * self.baseline_data[bl][chan].imag +
-                            self.baseline_data[bl][chan].real * self.baseline_data[bl][chan].real)
-
-                        phai_sun = numpy.arctan2(self.baseline_data[bl][chan].imag,
-                                                 self.baseline_data[bl][chan].real)
-                        if self.is_loop_mode == True:
-                            phai = phai_sun - numpy.arctan2(
-                                cal[self.sub_band][self.polarization][bl][chan].imag,
-                                cal[self.sub_band][self.polarization][bl][chan].real)
-                        else:
-                            phai = phai_sun - numpy.arctan2(cal[bl][chan].imag, cal[bl][chan].real)
-                        self.baseline_data[bl][chan] = complex(A * numpy.cos(phai), A * numpy.sin(phai))
-                        self.block_data[0, antenna1, antenna2, chan, 0] = self.baseline_data[bl][chan]
-                        bl = bl + 1
-        else:
-
-            for chan in range(0, self.sub_channels):
-                bl = 0
-                for antenna1 in range(0, self.antennas - 1):
-                    for antenna2 in range(antenna1 + 1, self.antennas):
-                        A = numpy.sqrt(
-                            self.baseline_data[bl][chan].imag * self.baseline_data[bl][chan].imag +
-                            self.baseline_data[bl][chan].real * self.baseline_data[bl][chan].real)
-                        phai_sun = numpy.arctan2(self.baseline_data[bl][chan].imag, self.baseline_data[bl][chan].real)
-                        if self.is_loop_mode:
-                            phai = phai_sun - numpy.arctan2(
-                                self.cal[self.sub_band][self.polarization][bl][chan].imag,
-                                self.cal[self.sub_band][self.polarization][bl][chan].real)
-                        else:
-                            phai = phai_sun - numpy.arctan2(self.cal[bl][chan].imag, self.cal[bl][chan].real)
-                        self.baseline_data[bl][chan] = complex(A * numpy.cos(phai), A * numpy.sin(phai))
-                        self.block_data[0, antenna1, antenna2, chan, 0] = self.baseline_data[bl][chan]
-                        bl = bl + 1
+            amplitude = abs(self.block_data)
+            phai_sun = numpy.arctan2(self.block_data.imag, self.block_data.real)
+            phai_sat = numpy.arctan2(cal.imag, cal.real)
+            if self.is_loop_mode:
+                phai = phai_sun - phai_sat
+            else:
+                phai = phai_sun - phai_sat
+            real = amplitude * numpy.cos(phai)
+            imag = amplitude * numpy.sin(phai)
+            self.block_data=numpy.vectorize(complex)(real, imag )
+        #                 bl = bl + 1
+        #
+        # if self.sub_array == 1:
+        #     for chan in range(0, self.sub_channels):
+        #         bl = 0
+        #         for antenna1 in range(0, self.antennas - 1):
+        #             for antenna2 in range(antenna1 + 1, self.antennas):
+        #                 A = numpy.sqrt(
+        #                     self.baseline_data[bl][chan].imag * self.baseline_data[bl][chan].imag +
+        #                     self.baseline_data[bl][chan].real * self.baseline_data[bl][chan].real)
+        #
+        #                 phai_sun = numpy.arctan2(self.baseline_data[bl][chan].imag,
+        #                                          self.baseline_data[bl][chan].real)
+        #                 if self.is_loop_mode == True:
+        #                     phai = phai_sun - numpy.arctan2(
+        #                         cal[self.sub_band][self.polarization][bl][chan].imag,
+        #                         cal[self.sub_band][self.polarization][bl][chan].real)
+        #                 else:
+        #                     phai = phai_sun - numpy.arctan2(cal[bl][chan].imag, cal[bl][chan].real)
+        #                 self.baseline_data[bl][chan] = complex(A * numpy.cos(phai), A * numpy.sin(phai))
+        #                 # self.block_data[0, antenna1, antenna2, chan, 0] = self.baseline_data[bl][chan]
+        #                 bl = bl + 1
+        # else:
+        #
+        #     for chan in range(0, self.sub_channels):
+        #         bl = 0
+        #         for antenna1 in range(0, self.antennas - 1):
+        #             for antenna2 in range(antenna1 + 1, self.antennas):
+        #                 A = numpy.sqrt(
+        #                     self.baseline_data[bl][chan].imag * self.baseline_data[bl][chan].imag +
+        #                     self.baseline_data[bl][chan].real * self.baseline_data[bl][chan].real)
+        #                 phai_sun = numpy.arctan2(self.baseline_data[bl][chan].imag, self.baseline_data[bl][chan].real)
+        #                 if self.is_loop_mode:
+        #                     phai = phai_sun - numpy.arctan2(
+        #                         self.cal[self.sub_band][self.polarization][bl][chan].imag,
+        #                         self.cal[self.sub_band][self.polarization][bl][chan].real)
+        #                 else:
+        #                     phai = phai_sun - numpy.arctan2(self.cal[bl][chan].imag, self.cal[bl][chan].real)
+        #                 self.baseline_data[bl][chan] = complex(A * numpy.cos(phai), A * numpy.sin(phai))
+        #                 # self.block_data[0, antenna1, antenna2, chan, 0] = self.baseline_data[bl][chan]
+        #                 bl = bl + 1

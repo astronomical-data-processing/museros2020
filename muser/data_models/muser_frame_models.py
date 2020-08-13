@@ -72,14 +72,12 @@ class MuserFrame(MuserBase):
 
         self.frequency = 1600000000
         self.current_frame_header = MuserFrameHeader()
-        self.if_read_first_frame_time = False
         self.set_array(sub_array)
         self.is_loop_mode = mode
         self.read_number = 0
 
         # ntimes x antenna x antenna x channels x polarization
-        self.block_data = numpy.zeros(
-            (1, self.antennas, self.antennas, self.sub_channels, 1), dtype=complex)
+        self.block_data = numpy.zeros((self.antennas, self.antennas, self.sub_channels), dtype=complex)
 
     def set_array(self, sub_array=1):
         '''
@@ -264,9 +262,6 @@ class MuserFrame(MuserBase):
         log.debug("Read frame date and time: %s " % self.current_frame_time.isot)
 
         self.current_frame_date_time = self.current_frame_time
-        if self.if_read_first_frame_time == False:
-            self.first_frame_time = self.current_frame_time
-            self.if_read_first_frame_time = True
 
         obs_time = self.current_frame_time.isot
 
@@ -386,6 +381,10 @@ class MuserFrame(MuserBase):
                 self.in_file.seek(-6, 1)
 
         self.sub_band = self.channel_group // 16
+        if self.is_loop_mode and self.sub_band == 0 and self.polarization == 0:
+            self.first_frame_time = self.current_frame_time
+        elif self.is_loop_mode == False:
+            self.first_frame_time = self.current_frame_time
 
         if self.version == True:
             obs_target = struct.unpack('H', self.in_file.read(2))[0]  # calibration source
@@ -434,10 +433,8 @@ class MuserFrame(MuserBase):
                         # self.baseline_data[self.polarization][antenna1][antenna2][channel] = c1
 
                         if (antenna1 < self.antennas - 1 and antenna2 < self.antennas):
-                            self.block_data[0, antenna1, antenna2, channel, 0] = c1
-                            self.block_data[0, antenna1, antenna2, channel + 1, 0] = c2
-                            # self.block_full_data[0, antenna1, antenna2, self.sub_band*16+channel, 1 - self.polarization] = c1
-                            # self.block_full_data[0, antenna1, antenna2, self.sub_band*16+channel + 1, 1-self.polarization] = c2
+                            self.block_data[antenna1, antenna2, channel] = c1
+                            self.block_data[antenna1, antenna2, channel + 1] = c2
 
                             self.baseline_data[bl][channel] = c1
                             self.baseline_data_flag[bl][channel] = True
@@ -459,32 +456,32 @@ class MuserFrame(MuserBase):
                     self.auto_correlation_data[channel][antenna] = r1
                     self.auto_correlation_data[channel + 1][antenna] = r2
                     if antenna < self.antennas - 4:
-                        self.block_data[0, antenna, antenna, channel, 0] = r1
-                        self.block_data[0, antenna, antenna, channel + 1, 0] = r2
+                        self.block_data[antenna, antenna, channel] = r1
+                        self.block_data[antenna, antenna, channel + 1] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
                     self.auto_correlation_data[channel][antenna + 1] = r1
                     self.auto_correlation_data[channel + 1][antenna + 1] = r2
                     if antenna < self.antennas - 4:
-                        self.block_data[0, antenna + 1, antenna + 1, channel, 0] = r1
-                        self.block_data[0, antenna + 1, antenna + 1, channel + 1, 0] = r2
+                        self.block_data[antenna + 1, antenna + 1, channel] = r1
+                        self.block_data[antenna + 1, antenna + 1, channel + 1] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
                     self.auto_correlation_data[channel][antenna + 2] = r1
                     self.auto_correlation_data[channel + 1][antenna + 2] = r2
                     if antenna < self.antennas - 4:
-                        self.block_data[0, antenna + 2, antenna + 2, channel, 0] = r1
-                        self.block_data[0, antenna + 2, antenna + 2, channel + 1, 0] = r2
+                        self.block_data[antenna + 2, antenna + 2, channel] = r1
+                        self.block_data[antenna + 2, antenna + 2, channel + 1] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
                     self.auto_correlation_data[channel][antenna + 3] = r1
                     self.auto_correlation_data[channel + 1][antenna + 3] = r2
                     if antenna < self.antennas - 4:
-                        self.block_data[0, antenna + 3, antenna + 3, channel, 0] = r1
-                        self.block_data[0, antenna + 3, antenna + 3, channel + 1, 0] = r2
+                        self.block_data[antenna + 3, antenna + 3, channel] = r1
+                        self.block_data[antenna + 3, antenna + 3, channel + 1] = r2
                     self.in_file.seek(32, 1)
                     # if channel==4 and antenna ==0:
                     #       print self.auto_correlation_data[channel][antenna]
@@ -516,8 +513,7 @@ class MuserFrame(MuserBase):
                         if antenna2 < self.antennas:
                             self.baseline_data[bl1][channel] = visbility[bl2]  # write data to baseline_data
                             self.baseline_data_flag[bl1][channel] = True
-                            self.block_data[0, antenna1, antenna2, channel, 0] = visbility[bl2]
-                            self.block_full_data[0, antenna1, antenna2, self.sub_band*16+channel, 1 - self.polarization] = visbility[bl2]
+                            self.block_data[antenna1, antenna2, channel] = visbility[bl2]
 
                             bl1 += 1
                         bl2 += 1

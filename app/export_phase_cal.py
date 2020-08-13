@@ -103,9 +103,9 @@ class Phase:
             # inject data
             if self.is_loop_mode:
                 block_full_data[0, :, :, muser_calibration.sub_band * 16:muser_calibration.sub_band * 16 + 16,
-                    1 - muser_calibration.polarization] = muser_calibration.block_data[0, :, :, 0:16, 0]
+                    muser_calibration.polarization] = muser_calibration.block_data[:, :, :]
             else:
-                block_full_data[0, :, :, :, 0] = muser_calibration.block_data[0, :, :, :, 0]
+                block_full_data[0, :, :, :, 0] = muser_calibration.block_data[:, :, :]
 
             bl = 0
             for antenna1 in range(0, muser_calibration.antennas - 1):
@@ -120,7 +120,7 @@ class Phase:
 
         file_name = muser_data_path("MUSER%1d-%04d%02d%02d.CAL" % (self.sub_array, self.year, self.month, self.day))
         log.info("Writing to file: " + os.path.basename(file_name))
-        calibration_Data.tofile(file_name)
+        block_full_data.tofile(file_name)
         log.info("Export phase done.")
         return True
 

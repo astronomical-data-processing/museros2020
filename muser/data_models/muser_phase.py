@@ -23,8 +23,17 @@ class MuserPhase(object):
             self.antennas = 40
         else:
             self.antennas = 60
+        muser_para = {0: (16, 40, 44, 4, 2), 1: (16, 60, 64, 33, 2)}
+        self.sub_channels, self.antennas, self.dr_output_antennas, self.frame_number, self.polarization_number = \
+            muser_para[self.sub_array - 1]
         self.sub_channels = 16
-        self.phase_data = numpy.zeros((4, 2, self.antennas * (self.antennas - 1) // 2, 16), dtype='complex')
+        if loop_mode:
+            self.phase_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels * self.frame_number, 2),
+                                          dtype='complex')
+        else:
+            self.phase_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels, 1), dtype='complex')
+
+        # self.phase_data = numpy.zeros((4, 2, self.antennas * (self.antennas - 1) // 2, 16), dtype='complex')
 
     def load_calibration_data(self, file_name=None):
 
@@ -40,12 +49,9 @@ class MuserPhase(object):
         if os.path.isfile(file_name):
             caldata = numpy.fromfile(file_name, dtype=complex)
             if self.is_loop_mode:
-                if self.sub_array == 1:
-                    self.phase_data = caldata.reshape(4, 2, self.antennas * (self.antennas - 1) // 2, 16)
-                elif self.muser.sub_array == 2:
-                    self.phasse_data = caldata.reshape(33, 2, self.antennas * (self.antennas - 1) // 2, 16)
+                self.phase_data = caldata.reshape(1, self.antennas, self.antennas, self.sub_channels * self.frame_number, 2)
             else:
-                self.phase_data = caldata.reshape(self.antennas * (self.antennas - 1) // 2, 16)
+                self.phase_data = caldata.reshape(1, self.antennas, self.antennas, self.sub_channels, 1)
             log.debug("Load Calibrated data.")
             return True
         else:
