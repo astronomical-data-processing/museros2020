@@ -94,6 +94,10 @@ def main(args):
     if not muser.search_first_file(frame_time=args.start):
         print("Cannot find observational data or not a MUSER file.")
         return -1
+    if not muser.search_frame(args.start):
+        print("Cannot locate the specified frame")
+        return -1
+
     data_file_name = muser.current_file_name
     print("Checking MUSER File Information V20200801")
     print("First Observational Time {}".format(muser.current_frame_time.isot))
@@ -104,8 +108,8 @@ def main(args):
     print("Sub Band: {} - Sub Channel {}".format(muser.sub_band, muser.sub_channels))
 
     # count total frames
-    # total_frames = muser.count_frame_number(start_time, end_time)
-    # create
+    total_frames = muser.count_frame_number(args.start, args.end)
+
 
     if muser.is_loop_mode:
         block_full_data = numpy.zeros([1, muser.antennas, muser.antennas, muser.sub_channels * muser.frame_number, 2],
@@ -153,14 +157,16 @@ def main(args):
     times = []
     solar_system_ephemeris.set('de432s')
 
-    # Search file
-    if not muser.search_frame(start_time):
+    # Re-Search file
+    if not muser.search_first_file(frame_time=args.start):
+        print("Cannot find observational data or not a MUSER file.")
+        return -1
+    if not muser.search_frame(args.start):
         print("Cannot locate the specified frame")
         return -1
 
-    # Ca
     count = 0
-    total_frames = 1
+    # total_frames = 1
     if muser.is_loop_mode:
         vis_data = numpy.zeros(
             (total_frames, muser.antennas, muser.antennas, muser.sub_channels * muser.frame_number, 2), dtype='complex')
@@ -208,16 +214,19 @@ def main(args):
                                       weight=1.0, polarisation_frame=PolarisationFrame('circularnp'),
                                       channel_bandwidth=channelbandwidth,
                                       integration_time=integration_time,
+                                      source='SUN',
                                       utc_time=utc_time)
     else:
         bvis = create_blockvisibility(muser_core, times, frequency, phasecentre=phasecentre,
                                       weight=1.0, polarisation_frame=PolarisationFrame('stokesI'),
                                       channel_bandwidth=channelbandwidth,
                                       integration_time=integration_time,
+                                      source='SUN',
                                       utc_time=utc_time)
     bvis.vis[...] = vis_data[...]
     vis_list = []
     vis_list.append(bvis)
+
     export_file_name = muser_data_path(data_file_name) + '.ms'
     export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
 
