@@ -107,20 +107,21 @@ class Phase:
             else:
                 block_full_data[0, :, :, :, 0] = muser_calibration.block_data[:, :, :]
 
-            bl = 0
-            for antenna1 in range(0, muser_calibration.antennas - 1):
-                for antenna2 in range(antenna1 + 1, muser_calibration.antennas):
-                    for channel in range(0, muser_calibration.sub_channels):
-                        if self.is_loop_mode == True:
-                            calibration_Data[muser_calibration.sub_band][muser_calibration.polarization][bl][channel] = \
-                                muser_calibration.baseline_data[bl][channel]
-                        else:
-                            calibration_Data[bl][channel] = muser_calibration.baseline_data[bl][channel]
-                    bl = bl + 1
+            # bl = 0
+            # for antenna1 in range(0, muser_calibration.antennas - 1):
+            #     for antenna2 in range(antenna1 + 1, muser_calibration.antennas):
+            #         for channel in range(0, muser_calibration.sub_channels):
+            #             if self.is_loop_mode == True:
+            #                 calibration_Data[muser_calibration.sub_band][muser_calibration.polarization][bl][channel] = \
+            #                     muser_calibration.baseline_data[bl][channel]
+            #             else:
+            #                 calibration_Data[bl][channel] = muser_calibration.baseline_data[bl][channel]
+            #         bl = bl + 1
 
         file_name = muser_data_path("MUSER%1d-%04d%02d%02d.CAL" % (self.sub_array, self.year, self.month, self.day))
         log.info("Writing to file: " + os.path.basename(file_name))
         block_full_data.tofile(file_name)
+        # calibration_Data.tofile(file_name)
         log.info("Export phase done.")
         return True
 
