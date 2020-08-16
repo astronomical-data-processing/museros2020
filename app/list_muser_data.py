@@ -22,7 +22,6 @@ def list_muser_data(args):
     # Read first Frame
     muser.read_one_frame()
     # Locate a specified frame
-    muser.search_frame('2015-11-22T09:40:31')
     print("Checking MUSER File Information V20200801")
     print("First Observational Time {}".format(muser.current_frame_time.isot))
     print("Filename {} is a valid MUSER Data File.".format(file_name))
