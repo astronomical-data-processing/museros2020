@@ -53,11 +53,13 @@ spectral_mode           Visibility processing mode          'mfs' or 'channel'
 
 """
 
-__all__ = ['muser_path', 'muser_data_path', 'get_parameter', 'IF_BANDWIDTH', 'LOOP_MODE_LOW', 'NON_LOOP_MODE_LOW',
+__all__ = ['muser_path', 'muser_data_path', 'muser_calibration_path', 'muser_output_path', 'get_parameter',
+           'IF_BANDWIDTH', 'LOOP_MODE_LOW', 'NON_LOOP_MODE_LOW',
            'LOOP_MODE_HIGH', 'NON_LOOP_MODE_HIGH']
 
 import logging
 import os
+import errno
 
 log = logging.getLogger('logger')
 
@@ -159,12 +161,74 @@ def muser_data_path(path=None, check=True):
     """
     muser_data_home = os.getenv('MUSER_DATA', None)
     if muser_data_home is None:
-        dp = muser_path('configurations/')
+        dp = muser_path('data/')
     else:
         dp = muser_data_home
     if check:
         if not os.path.exists(dp):
             raise EnvironmentError("MUSER data directory {} does not exist".format(dp))
+    if path is not None:
+        dp = os.path.join(dp, path)
+    return dp
+
+
+def muser_output_path(path=None, check=True):
+    """Converts a path that might be relative to the muser data directory into an
+    absolute path::
+
+        muser_data_path('models/SKA1_LOW_beam.fits')
+        '/Users/wangfeng/work/muser2020/data/models/SKA1_LOW_beam.fits'
+
+    The data path default is muser_path('data') but may be overriden with the environment variable muser_DATA.
+
+    :param path:
+    :return: absolute path
+    """
+    muser_data_home = os.getenv('MUSER_DATA', None)
+    if muser_data_home is None:
+        dp = muser_path('data/output/')
+    else:
+        dp = muser_data_home
+        dp = os.path.join(dp, 'output/')
+    if check:
+        if not os.path.exists(dp):
+            try:
+                os.makedirs(dp)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
+            # raise EnvironmentError("MUSER data directory {} does not exist".format(dp))
+    if path is not None:
+        dp = os.path.join(dp, path)
+    return dp
+
+
+def muser_calibration_path(path=None, check=True):
+    """Converts a path that might be relative to the muser data directory into an
+    absolute path::
+
+        muser_calibration_path('models/SKA1_LOW_beam.fits')
+        '/Users/wangfeng/work/museros2020/data/cal/
+
+    The data path default is muser_path('data') but may be overriden with the environment variable muser_DATA.
+
+    :param path:
+    :return: absolute path
+    """
+    muser_data_home = os.getenv('MUSER_DATA', None)
+    if muser_data_home is None:
+        dp = muser_path('data/cal/')
+    else:
+        dp = muser_data_home
+        dp = os.path.join(dp, 'cal/')
+    if check:
+        if not os.path.exists(dp):
+            try:
+                os.makedirs(dp)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
+            # raise EnvironmentError("MUSER data directory {} does not exist".format(dp))
     if path is not None:
         dp = os.path.join(dp, path)
     return dp

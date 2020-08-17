@@ -12,7 +12,7 @@ import numpy
 import traceback
 import logging
 from muser.data_models.muser_data import MuserData
-from muser.data_models.parameters import muser_path, muser_data_path
+from muser.data_models.parameters import muser_path, muser_data_path, muser_calibration_path, muser_output_path
 from rascil.processing_components.visibility.coalesce import convert_visibility_to_blockvisibility, \
     convert_blockvisibility_to_visibility
 from astropy.time import Time
@@ -21,7 +21,7 @@ log = logging.getLogger('muser')
 
 
 class Phase:
-    def __init__(self, sub_array=None, start_time=None, end_time=None):
+    def __init__(self, sub_array=None, start_time=None, end_time=None, output_file=None):
         self.sub_array = sub_array
         self.data_source = 0
         if start_time is not None:
@@ -32,6 +32,10 @@ class Phase:
             self.end_time = end_time
         else:
             self.end_time = None
+        if output_file is not None:
+            self.output_file = output_file
+        else:
+            self.output_file = None
 
     def calibration(self):
         muser_calibration = MuserData(sub_array=self.sub_array)
@@ -127,10 +131,13 @@ class Phase:
 
         # Mean Value
         self.block_full_data /= count
-        file_name = muser_data_path("MUSER%1d-%04d%02d%02d.CAL" % (self.sub_array, self.year, self.month, self.day))
+        if self.output_file is None:
+            file_name = muser_calibration_path(
+                "MUSER%1d-%04d%02d%02d.CAL" % (self.sub_array, self.year, self.month, self.day))
+        else:
+            file_name = muser_calibration_path(self.output_file)
         log.info("Writing to file: " + os.path.basename(file_name))
         self.block_full_data.tofile(file_name)
-        # calibration_Data.tofile(file_name)
         log.info("Export phase done.")
         return True
 
@@ -139,8 +146,12 @@ def export_phase(args):
     muser = args.muser
     start = args.start
     end_time = args.end
+    if len(args.output) != 0:
+        output_file = args.output
+    else:
+        output_file = None
 
-    cal = Phase(muser, start, end_time)
+    cal = Phase(sub_array=muser, start_time =start, end_time =end_time, output_file =output_file)
     cal.calibration()
 
 
@@ -150,6 +161,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='List Muser Data Information for Each Frame')
     parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
     parser.add_argument('-s', "--start", type=str, default=None, help='The beginning time')
-    parser.add_argument('-e', "--end", type=str, default='', help='The end time ')
+    parser.add_argument('-e', "--end", type=str, default='', help='The end time')
+    parser.add_argument('-o', "--output", type=str, default='', help='The output filename')
 
     export_phase(parser.parse_args())

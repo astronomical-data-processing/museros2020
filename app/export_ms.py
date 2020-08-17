@@ -16,6 +16,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # sys.path.append(os.path.join('..','..'))
 
 from rascil.data_models.parameters import rascil_path
+
 # results_dir = rascil_path('test_results')
 
 from astropy.coordinates import SkyCoord
@@ -39,7 +40,7 @@ from rascil.processing_components import advise_wide_field, create_image_from_vi
     predict_skycomponent_visibility
 from muser.data_models.muser_data import MuserData
 from muser.data_models.muser_phase import MuserPhase
-from muser.data_models.parameters import muser_path, muser_data_path
+from muser.data_models.parameters import muser_path, muser_data_path, muser_output_path
 from rascil.processing_components.visibility.coalesce import convert_visibility_to_blockvisibility, \
     convert_blockvisibility_to_visibility
 import logging
@@ -95,7 +96,7 @@ def main(args):
     if not muser.search_first_file(frame_time=args.start):
         print("Cannot find observational data or not a MUSER file.")
         return -1
-    data_file_name = muser.current_file_name
+    data_file_name = os.path.basename(muser.current_file_name)
     print("Checking MUSER File Information V20200801")
     print("First Observational Time {}".format(muser.current_frame_time.isot))
     # Check data
@@ -215,7 +216,7 @@ def main(args):
     vis_list = []
     vis_list.append(bvis)
 
-    export_file_name = muser_data_path(data_file_name) + '.ms'
+    export_file_name = muser_output_path(data_file_name) + '.ms'
     export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
 
     # matplotlib.use('Agg')

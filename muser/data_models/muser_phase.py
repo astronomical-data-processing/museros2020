@@ -6,7 +6,7 @@ __all__ = ["MuserPhase"]
 
 import logging
 from muser.data_models.muser_frame_models import MuserBase, MuserFrame
-from muser.data_models.parameters import muser_path, muser_data_path
+from muser.data_models.parameters import muser_path, muser_calibration_path, muser_output_path, muser_data_path
 from muser.data_models.muser_data import MuserData
 from astropy.time import Time
 import numpy
@@ -43,7 +43,7 @@ class MuserPhase(object):
             year = self.obs_date.datetime.year
             month = self.obs_date.datetime.month
             day = self.obs_date.datetime.day
-            file_name = muser_data_path("MUSER%1d-%04d%02d%02d.CAL" % (self.sub_array, year, month, day))
+            file_name = muser_calibration_path("MUSER%1d-%04d%02d%02d.CAL" % (self.sub_array, year, month, day))
 
         import os
         if os.path.isfile(file_name):
