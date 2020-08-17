@@ -177,7 +177,7 @@ def main(args):
         local_ha = location.lon - c_ITRS.spherical.lon
         local_ha.wrap_at(24 * u.hourangle, inplace=True)
 
-        print("Local Hour Angle: {}".format(local_ha.to('rad').value))
+        print("UTC: {} Local Hour Angle: {}".format(muser.first_frame_time,local_ha.to('rad').value))
         times.append([local_ha.to('rad').value])
         integration_time.append(0.025)
 
@@ -219,20 +219,22 @@ def main(args):
     export_file_name = muser_output_path(data_file_name) + '.ms'
     export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
 
-    # matplotlib.use('Agg')
+    print("Done. ")
 
-    from matplotlib import pylab
-
-    from matplotlib import pyplot as plt
-    vt = convert_blockvisibility_to_visibility(bvis)
-    plt.clf()
-    plt.plot(vt.data['uvw'][:, 0], vt.data['uvw'][:, 1], '.', color='b')
-    plt.plot(-vt.data['uvw'][:, 0], -vt.data['uvw'][:, 1], '.', color='r')
-    plt.xlabel('U (wavelengths)')
-    plt.ylabel('V (wavelengths)')
-    plt.title("UV coverage")
-    # plt.savefig(storedir + '/UV_coverage.pdf', format='pdf')
-    plt.show()
+    # # matplotlib.use('Agg')
+    #
+    # from matplotlib import pylab
+    #
+    # from matplotlib import pyplot as plt
+    # vt = convert_blockvisibility_to_visibility(bvis)
+    # plt.clf()
+    # plt.plot(vt.data['uvw'][:, 0], vt.data['uvw'][:, 1], '.', color='b')
+    # plt.plot(-vt.data['uvw'][:, 0], -vt.data['uvw'][:, 1], '.', color='r')
+    # plt.xlabel('U (wavelengths)')
+    # plt.ylabel('V (wavelengths)')
+    # plt.title("UV coverage")
+    # # plt.savefig(storedir + '/UV_coverage.pdf', format='pdf')
+    # plt.show()
 
     #
     # advice = advise_wide_field(vt, guard_band_image=3.0, delA=0.1, facets=1, wprojection_planes=1,
