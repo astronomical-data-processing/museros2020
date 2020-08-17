@@ -152,11 +152,6 @@ def export_phase(args):
     muser = args.muser
     start = args.start
     end_time = args.end
-    # if len(args.end_time) != 0:
-    #     end_time = args.end_time
-    # else:
-    #     end_time = None
-
     if len(args.output) != 0:
         output_file = args.output
     else:
