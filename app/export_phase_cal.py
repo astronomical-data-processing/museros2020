@@ -65,13 +65,13 @@ class Phase:
         self.last_polarization = -1
 
         if muser_calibration.is_loop_mode == True:
-            frame_NUM = muser_calibration.frame_number * 2
+            # frame_NUM = muser_calibration.frame_number * 2
             self.block_full_data = numpy.zeros(
                 [muser_calibration.antennas, muser_calibration.antennas,
                  muser_calibration.sub_channels * muser_calibration.frame_number,
                  2], dtype='complex')
         else:
-            frame_NUM = 1
+            # frame_NUM = 1
             self.block_full_data = numpy.zeros(
                 [muser_calibration.antennas, muser_calibration.antennas, muser_calibration.channels],
                 dtype='complex')
