@@ -292,6 +292,9 @@ class MuserData(MuserFrame):
             if self.is_loop_mode:
                 frame = 0
                 while frame < total_frames:
+                    print("Reading No. %d %s %d %d" % (
+                        frame, self.first_frame_time.isot, self.sub_band,
+                        self.polarization))
                     if not self.read_one_frame():
                         return False
                     if read_data:
