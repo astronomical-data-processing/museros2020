@@ -30,10 +30,12 @@ class Phase:
             self.start_time = None
         if end_time is not None:
             self.end_time = end_time
+            print(self.end_time, "endtime*******")
         else:
             self.end_time = None
         if output_file is not None:
             self.output_file = output_file
+            print(self.output_file, "output file*******")
         else:
             self.output_file = None
 
@@ -59,19 +61,24 @@ class Phase:
 
         # count total frames
         muser_calibration.search_frame(search_time=self.start_time)
-        total_frames = muser_calibration.count_frame_number(self.start_time, self.end_time)
 
         self.last_sub_band = -1
         self.last_polarization = -1
 
         if muser_calibration.is_loop_mode == True:
-            # frame_NUM = muser_calibration.frame_number * 2
+            if self.end_time is None:
+                total_frames = 1
+            else:
+                total_frames = muser_calibration.count_frame_number(self.start_time, self.end_time)
             self.block_full_data = numpy.zeros(
                 [muser_calibration.antennas, muser_calibration.antennas,
                  muser_calibration.sub_channels * muser_calibration.frame_number,
                  2], dtype='complex')
         else:
-            # frame_NUM = 1
+            if self.end_time is None:
+                total_frames = 1
+            else:
+                total_frames = muser_calibration.count_frame_number(self.start_time, self.end_time)
             self.block_full_data = numpy.zeros(
                 [muser_calibration.antennas, muser_calibration.antennas, muser_calibration.channels],
                 dtype='complex')
@@ -89,7 +96,6 @@ class Phase:
         self.day = muser_calibration.current_frame_time.datetime.day
 
         count = 0
-        # total_frames = 1
         while count < total_frames:
             if not muser_calibration.read_full_frame(read_data=True):
                 print("File reading error. ")
@@ -146,6 +152,11 @@ def export_phase(args):
     muser = args.muser
     start = args.start
     end_time = args.end
+    # if len(args.end_time) != 0:
+    #     end_time = args.end_time
+    # else:
+    #     end_time = None
+
     if len(args.output) != 0:
         output_file = args.output
     else:
@@ -161,7 +172,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='List Muser Data Information for Each Frame')
     parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
     parser.add_argument('-s', "--start", type=str, default=None, help='The beginning time')
-    parser.add_argument('-e', "--end", type=str, default='', help='The end time')
+    parser.add_argument('-e', "--end", type=str, default=None, help='The end time')
     parser.add_argument('-o', "--output", type=str, default='', help='The output filename')
 
     export_phase(parser.parse_args())
