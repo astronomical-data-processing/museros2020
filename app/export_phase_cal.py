@@ -101,9 +101,9 @@ class Phase:
                 print("File reading error. ")
                 exit(1)
 
-            print("Reading No. %d %s %d %d" % (
-                count, muser_calibration.first_frame_time.isot, muser_calibration.sub_band,
-                muser_calibration.polarization))
+            # print("Reading No. %d %s %d %d" % (
+            #     count, muser_calibration.first_frame_time.isot, muser_calibration.sub_band,
+            #     muser_calibration.polarization))
             log.info("Reading No. %d %s %d %d" % (
                 count, muser_calibration.first_frame_time.isot, muser_calibration.sub_band,
                 muser_calibration.polarization))
