@@ -168,6 +168,13 @@ def main(args):
         if not muser.read_full_frame(read_data=True):
             print("File reading error. ")
             exit(1)
+        # Delay processing for the Sun
+        if muser.sub_array == 2:
+            if muser.current_frame_header.strip_switch == 0xCCCCCCCC:
+                muser.delay_process_block("sun")
+        else:
+            muser.delay_process_block('sun')
+
         obs_time = muser.first_frame_time + 0.025 * u.second
         # TODO - J2000.0
         phasecentre = get_body('sun', obs_time, location)
