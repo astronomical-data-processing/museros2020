@@ -173,9 +173,9 @@ def main(args):
         if stripe:
             if muser.sub_array == 2:
                 if muser.current_frame_header.strip_switch == 0xCCCCCCCC:
-                    muser.delay_process_block("sun")
+                    muser.delay_process("sun")
             else:
-                muser.delay_process_block('sun')
+                muser.delay_process('sun')
 
         obs_time = muser.first_frame_time + 0.025 * u.second
         # TODO - J2000.0
