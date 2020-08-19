@@ -469,10 +469,10 @@ class MuserData(MuserFrame):
                         for pol in range(self.real_polarization_number):
                             cc = count * 16 + channel
                             self.block_full_data[antenna1, antenna2, count * 16 + channel, pol] = complex(
-                                self.block_full_data[antenna1, antenna2, cc, pol].real * numpy.cos(phai) +
-                                self.block_full_data[antenna1, antenna2, cc, pol].imag * numpy.sin(phai),
-                                self.block_full_data[antenna1, antenna2, cc, pol].imag * numpy.cos(phai) -
-                                self.block_full_data[antenna1, antenna2, cc, pol].real * numpy.sin(phai))
+                                self.block_full_data[antenna2, antenna1, cc, pol].real * numpy.cos(phai) +
+                                self.block_full_data[antenna2, antenna1, cc, pol].imag * numpy.sin(phai),
+                                self.block_full_data[antenna2, antenna1, cc, pol].imag * numpy.cos(phai) -
+                                self.block_full_data[antenna2, antenna1, cc, pol].real * numpy.sin(phai))
                         bl = bl + 1
 
         log.debug("Block Data Delay Process and fringe stopping... Done.")
