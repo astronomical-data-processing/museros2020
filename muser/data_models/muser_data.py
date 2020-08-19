@@ -451,55 +451,73 @@ class MuserData(MuserFrame):
             parameter = 12.5
             delay = self.par_delay
 
-        for count in range(self.real_frame_number):
-            for channel in range(0, self.sub_channels):
-                bl = 0
-                for antenna1 in range(0, self.antennas - 1):  # SubChannelsLow = 16
-                    for antenna2 in range(antenna1 + 1, self.antennas):
-                        tg = delay[antenna2] - delay[antenna1]
-                        tg0 = int(delay[antenna2]) - int(delay[antenna1])
-                        if self.sub_array == 1:
-                            Frf = (self.frequency * 1e-6 + channel * 25 + parameter) / 1000.0
-                            Fif = (channel * 25 + parameter + 50.0) / 1000.0
-                            phai = 2 * numpy.pi * (Frf * tg - Fif * tg0)
-                        else:
-                            Frf = (self.frequency * 1e-6 + (15 - channel) * 25 + parameter) / 1000.0
-                            Fif = (channel * 25 + parameter + 50.0) / 1000.0  # local frequency(GHz)
-                            phai = 2 * numpy.pi * (-Frf * tg - Fif * tg0)
-                        for pol in range(self.real_polarization_number):
-                            cc = count * 16 + channel
-                            self.block_full_data[antenna1, antenna2, count * 16 + channel, pol] = complex(
-                                self.block_full_data[antenna2, antenna1, cc, pol].real * numpy.cos(phai) +
-                                self.block_full_data[antenna2, antenna1, cc, pol].imag * numpy.sin(phai),
-                                self.block_full_data[antenna2, antenna1, cc, pol].imag * numpy.cos(phai) -
-                                self.block_full_data[antenna2, antenna1, cc, pol].real * numpy.sin(phai))
-                        bl = bl + 1
+        delay_real = delay[0:self.antennas]
+        [delay_x, delay_y] = numpy.meshgrid(delay_real, delay_real)
+        delay_matrix = delay_x - delay_y
+        delay_matrix_int = numpy.ceil(delay_x) - numpy.ceil(delay_y)
+
+        freq = (numpy.arange(self.start_frequency, self.end_frequency, 25) + parameter) / 1000.
+        freq_interval = numpy.repeat((numpy.arange(0, self.sub_channels) * 25 + parameter + 50) / 1000., 4)
+        phai1 = numpy.einsum('ij,kl->ijk', delay_matrix, freq.reshape(-1, 1))
+        phai2 = numpy.einsum('ij,kl->ijk', delay_matrix_int, freq_interval.reshape(-1, 1))
+        phai_block = 2 * numpy.pi * ( phai1 - phai2 )
+        for pol in range(self.real_polarization_number):
+            real = self.block_full_data[:, :, :, pol].real * numpy.cos(phai_block) + self.block_full_data[:, :, :,
+                                                                                   pol].imag * numpy.sin(phai_block)
+            imag = self.block_full_data[:, :, :, pol].imag * numpy.cos(phai_block) - self.block_full_data[:, :, :,
+                                                                                   pol].real * numpy.sin(phai_block)
+            self.block_full_data[:,:,:,pol] = numpy.vectorize(complex)(real, imag)
+
+        # for count in range(self.real_frame_number):
+        #     for channel in range(0, self.sub_channels):
+        #         bl = 0
+        #         for antenna1 in range(0, self.antennas - 1):  # SubChannelsLow = 16
+        #             for antenna2 in range(antenna1 + 1, self.antennas):
+        #                 tg = delay[antenna2] - delay[antenna1]
+        #                 tg0 = int(delay[antenna2]) - int(delay[antenna1])
+        #                 if self.sub_array == 1:
+        #                     Frf = (self.frequency * 1e-6 + channel * 25 + parameter) / 1000.0
+        #                     Fif = (channel * 25 + parameter + 50.0) / 1000.0
+        #                     phai = 2 * numpy.pi * (Frf * tg - Fif * tg0)
+        #                 else:
+        #                     Frf = (self.frequency * 1e-6 + (15 - channel) * 25 + parameter) / 1000.0
+        #                     Fif = (channel * 25 + parameter + 50.0) / 1000.0  # local frequency(GHz)
+        #                     phai = 2 * numpy.pi * (-Frf * tg - Fif * tg0)
+        #                 for pol in range(self.real_polarization_number):
+        #                     cc = count * 16 + channel
+        #                     self.block_full_data[antenna1, antenna2, count * 16 + channel, pol] = complex(
+        #                         self.block_full_data[antenna2, antenna1, cc, pol].real * numpy.cos(phai) +
+        #                         self.block_full_data[antenna2, antenna1, cc, pol].imag * numpy.sin(phai),
+        #                         self.block_full_data[antenna2, antenna1, cc, pol].imag * numpy.cos(phai) -
+        #                         self.block_full_data[antenna2, antenna1, cc, pol].real * numpy.sin(phai))
+        #                 bl = bl + 1
 
         log.debug("Block Data Delay Process and fringe stopping... Done.")
 
-    def count_frame_number(self, time_start, time_end):
-        self.start_frame_time = Time(time_start, format='isot')
-        count = 0
-        while True:
-            if self.read_full_frame():
-                if time_end is None:
-                    break
-                if self.first_frame_time > Time(time_end, format='isot'):
-                    break
-                count = count + 1
-            else:
+
+def count_frame_number(self, time_start, time_end):
+    self.start_frame_time = Time(time_start, format='isot')
+    count = 0
+    while True:
+        if self.read_full_frame():
+            if time_end is None:
                 break
-        return count
+            if self.first_frame_time > Time(time_end, format='isot'):
+                break
+            count = count + 1
+        else:
+            break
+    return count
 
-    def phase_calibration(self, cal):
 
-        log.debug("Satellite phase correction")
-        cal = cal.reshape(self.block_full_data.shape)
-        if self.sub_array == 1:
-            amplitude = abs(self.block_full_data)
-            phai_sun = numpy.arctan2(self.block_full_data.imag, self.block_full_data.real)
-            phai_sat = numpy.arctan2(cal.imag, cal.real)
-            phai = phai_sun - phai_sat
-            real = amplitude * numpy.cos(phai)
-            imag = amplitude * numpy.sin(phai)
-            self.block_full_data = numpy.vectorize(complex)(real, imag)
+def phase_calibration(self, cal):
+    log.debug("Satellite phase correction")
+    cal = cal.reshape(self.block_full_data.shape)
+    if self.sub_array == 1:
+        amplitude = abs(self.block_full_data)
+        phai_sun = numpy.arctan2(self.block_full_data.imag, self.block_full_data.real)
+        phai_sat = numpy.arctan2(cal.imag, cal.real)
+        phai = phai_sun - phai_sat
+        real = amplitude * numpy.cos(phai)
+        imag = amplitude * numpy.sin(phai)
+        self.block_full_data = numpy.vectorize(complex)(real, imag)

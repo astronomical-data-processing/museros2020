@@ -103,10 +103,23 @@ class MuserFrame(MuserBase):
                 dtype=complex)
             self.real_polarization_number = 2
             self.real_frame_number = self.frame_number
+            if self.sub_array == 1:
+                self.start_frequency = 400
+                self.end_frequency = 2000
+            else:
+                self.start_frequency = 2000
+                self.end_frequency = 15000
         else:
             self.block_full_data = numpy.zeros((self.antennas, self.antennas, self.sub_channels, 1), dtype=complex)
             self.real_polarization_number = 1
             self.real_frame_number = 1
+            if self.sub_array ==1:
+                self.start_frequency = self.sub_band * 400
+                self.end_frequency = self.sub_band * 400 + 400
+            else:
+                self.start_frequency = self.sub_band * 2000
+                self.end_frequency = self.sub_band * 2000 + 400
+
         self.is_data_buffer_initialized = True
 
     def search_frame_header_with_byte(self):
