@@ -63,7 +63,7 @@ class MuserDataReader(MuserData):
         """
         Main function call. Process raw data: delay process and sum
         """
-        super(MuserDataReader, self).__init__(sub_array, file_name)
+        super(MuserDataReader, self).__init__(sub_array, file_name=file_name)
 
         # self.config = os.path.join(os.path.abspath(os.path.dirname(__file__)), "museruvfits.xml")
 

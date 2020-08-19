@@ -21,7 +21,7 @@ log = logging.getLogger('muser')
 
 
 class Phase:
-    def __init__(self, sub_array=None, start_time=None, end_time=None, output_file=None):
+    def __init__(self, sub_array=None, start_time=None, end_time=None, output_file=None, stripe=False):
         self.sub_array = sub_array
         self.data_source = 0
         if start_time is not None:
@@ -30,14 +30,13 @@ class Phase:
             self.start_time = None
         if end_time is not None:
             self.end_time = end_time
-            print(self.end_time, "endtime*******")
         else:
             self.end_time = None
         if output_file is not None:
             self.output_file = output_file
-            print(self.output_file, "output file*******")
         else:
             self.output_file = None
+        self.stripe_stop = stripe
 
     def calibration(self):
         muser_calibration = MuserData(sub_array=self.sub_array)
@@ -54,10 +53,10 @@ class Phase:
         print("First Observational Time {}".format(muser_calibration.current_frame_time.isot))
         # Check data
         print("Filename {} is a valid MUSER Data File.".format(data_file_name))
-        print("Current Observational Time {}".format(muser_calibration.current_frame_utc_time.isot))
+        print("Current Observational Time UTC:  {}".format(muser_calibration.current_frame_utc_time.isot))
         print("Observational Mode: {} \nFrequency {}".format("LOOP" if muser_calibration.is_loop_mode else "Non Loop",
                                                              muser_calibration.frequency))
-        print("Sub Band: {} - Sub Channel {}".format(muser_calibration.sub_band, muser_calibration.sub_channels))
+        print("First frame Sub Band: {} - Sub Channel {}".format(muser_calibration.sub_band, muser_calibration.sub_channels))
 
         # count total frames
         muser_calibration.search_frame(search_time=self.start_time)
@@ -101,19 +100,18 @@ class Phase:
                 print("File reading error. ")
                 exit(1)
 
-            print("Reading No. %d %s %d %d" % (
-                count, muser_calibration.first_frame_time.isot, muser_calibration.sub_band,
-                muser_calibration.polarization))
-            log.info("Reading No. %d %s %d %d" % (
-                count, muser_calibration.first_frame_time.isot, muser_calibration.sub_band,
-                muser_calibration.polarization))
+            print("Reading No. %d %s" % (
+                count, muser_calibration.first_frame_time.isot))
+            log.info("Reading No. %d %s" % (
+                count, muser_calibration.first_frame_time.isot))
 
             # Delay processing for satellite
-            if self.sub_array == 2:
-                if muser_calibration.current_frame_header.strip_switch == 0xCCCCCCCC:
-                    muser_calibration.delay_process_block("satellite")
-            else:
-                muser_calibration.delay_process_block('satellite')
+            if self.stripe_stop:
+                if self.sub_array == 2:
+                    if muser_calibration.current_frame_header.strip_switch == 0xCCCCCCCC:
+                        muser_calibration.delay_process_block("satellite")
+                else:
+                    muser_calibration.delay_process_block('satellite')
 
             self.last_sub_band = muser_calibration.sub_band
             self.last_polarization = muser_calibration.polarization
@@ -156,8 +154,8 @@ def export_phase(args):
         output_file = args.output
     else:
         output_file = None
-
-    cal = Phase(sub_array=muser, start_time =start, end_time =end_time, output_file =output_file)
+    stripe = args.stripe
+    cal = Phase(sub_array=muser, start_time =start, end_time =end_time, output_file =output_file, stripe=stripe)
     cal.calibration()
 
 
@@ -168,6 +166,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
     parser.add_argument('-s', "--start", type=str, default=None, help='The beginning time')
     parser.add_argument('-e', "--end", type=str, default=None, help='The end time')
+    parser.add_argument('-t', "--stripe", type=bool, default=False, help='Strip Stop')
     parser.add_argument('-o', "--output", type=str, default='', help='The output filename')
 
     export_phase(parser.parse_args())
