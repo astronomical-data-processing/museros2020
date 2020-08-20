@@ -139,7 +139,7 @@ def main(args):
                 freq.append(muser.frequency + 25e6 * i)
             channelbandwidth = numpy.array([25e6] * 16)
         else:
-            for i in range(33 * 16):
+            for i in range(16):
                 freq.append(muser.frequency + 25e6 * i)
             channelbandwidth = numpy.array([25e6] * 16)
 
