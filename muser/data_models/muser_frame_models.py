@@ -117,8 +117,11 @@ class MuserFrame(MuserBase):
                 self.start_frequency = self.sub_band * 400
                 self.end_frequency = self.sub_band * 400 + 400
             else:
-                self.start_frequency = self.sub_band * 2000
-                self.end_frequency = self.sub_band * 2000 + 400
+                if self.sub_band == 32:
+                    self.start_frequency = 14600
+                    self.end_frequency = 15000
+                self.start_frequency = self.sub_band * 400 + 2000
+                self.end_frequency = (self.sub_band + 1) * 400 + 2000
 
         self.is_data_buffer_initialized = True
 
