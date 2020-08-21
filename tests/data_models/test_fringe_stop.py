@@ -17,14 +17,14 @@ log = logging.getLogger('logger')
 
 
 def init_logging():
-    logging.basicConfig(filename='test_strip_stop.log',
+    logging.basicConfig(filename='test_fringe_stop.log',
                         filemode='a',
                         format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
                         datefmt='%H:%M:%S',
                         level=logging.INFO)
 
 
-class TestStripeStop(unittest.TestCase):
+class TestFringeStop(unittest.TestCase):
 
     def get_muser_data_path(self):
         self.data_path = muser_data_path()
