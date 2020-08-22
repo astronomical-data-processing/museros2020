@@ -384,8 +384,10 @@ class MuserFrame(MuserBase):
                         buff = self.in_file.read(12)
                         c1, c2 = self.convert_cross_correlation(buff)
                         if (antenna1 < self.antennas and antenna2 < self.antennas ):
-                            self.block_data[antenna2, antenna1, channel] = c1
-                            self.block_data[antenna2, antenna1, channel + 1] = c2
+                            self.block_data[antenna1, antenna2, channel] = c1
+                            self.block_data[antenna1, antenna2, channel + 1] = c2
+                            self.block_data[antenna2, antenna1, channel] = numpy.conj(c1)
+                            self.block_data[antenna2, antenna1, channel + 1] = numpy.conj(c2)
                             bl = bl + 1
                 self.in_file.seek(40, 1)
 
@@ -441,7 +443,8 @@ class MuserFrame(MuserBase):
                 for antenna1 in range(0, self.antennas - 1):
                     for antenna2 in range(antenna1 + 1, self.dr_output_antennas):
                         if antenna2 < self.antennas:
-                            self.block_data[antenna2, antenna1, channel] = visbility[bl2]
+                            self.block_data[antenna1, antenna2, channel] = visbility[bl2]
+                            self.block_data[antenna2, antenna1, channel] = numpy.conj(visbility[bl2])
                             bl1 += 1
                         bl2 += 1
 
