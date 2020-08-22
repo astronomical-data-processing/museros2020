@@ -71,7 +71,10 @@ location = EarthLocation(lon=115.2505 * u.deg, lat=42.211833333 * u.deg, height=
 #              diameter=2.0, name='MUSER', location=location)
 
 msfile = muser_output_path("CSRH_20151122-125000_100457483.ms")
-vis = create_blockvisibility_from_ms(msfile)
+
+ch= numpy.arange(1)
+vis = create_blockvisibility_from_ms(msfile,  start_chan=52,end_chan=52)
+vt = convert_blockvisibility_to_visibility(vis[0])
 
 # lowr3 = create_named_configuration('LOWBD2', rmax=750.0)
 
