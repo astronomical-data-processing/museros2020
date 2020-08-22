@@ -48,10 +48,10 @@ class TestReadData(unittest.TestCase):
             print("Cannot find phase calibration file. ")
             exit(1)
         print("File shape", phase_cal.phase_data.shape)
-        phase_cal_file = numpy.arctan(phase_cal.phase_data.imag/phase_cal.phase_data.real)
+        phase_cal_file = numpy.arctan2(phase_cal.phase_data.imag/phase_cal.phase_data.real)
         print(muser.current_frame_time)
         if muser.read_data():
-            phase = numpy.arctan(muser.block_data.imag/muser.block_data.real)
+            phase = numpy.arctan2(muser.block_data.imag/muser.block_data.real)
             assert(phase[1,0,0] == -phase[0,1,0])
         
 
