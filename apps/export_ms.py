@@ -82,13 +82,13 @@ def create_configuration(name: str = 'LOWBD2', **kwargs):
 
 
 def main(args):
-    if args.muser == '1':
+    if args.muser == 1:
         muser_array = 'MUSER1'
     else:
         muser_array = 'MUSER2'
     start_time = args.start
     end_time = args.end
-    stripe = args.stripe
+    fringe = args.fringe
 
     location = EarthLocation(lon=115.2505 * u.deg, lat=42.211833333 * u.deg, height=1365.0 * u.m)
 
@@ -172,7 +172,7 @@ def main(args):
             print("File reading error. ")
             exit(1)
         # Delay processing for the Sun
-        if stripe:
+        if fringe:
             if muser.sub_array == 2:
                 if muser.current_frame_header.strip_switch == 0xCCCCCCCC:
                     muser.delay_process("sun")
@@ -245,5 +245,5 @@ if __name__ == '__main__':
     parser.add_argument('-l', "--line", type=int, default=1, help='The number of frames')
     parser.add_argument('-s', "--start", type=str, default='', help='The beginning time ')
     parser.add_argument('-e', "--end", type=str, default='', help='The end time ')
-    parser.add_argument('-t', "--stripe", type=bool, default=False, help='Strip Stop')
+    parser.add_argument('-t', "--fringe", type=bool, default=False, help='Fringe Stop')
     main(parser.parse_args())
