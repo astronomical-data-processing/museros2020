@@ -9,7 +9,7 @@ from rascil.processing_components import create_named_configuration
 import argparse
 
 # from matplotlib import plt.savefig
-from astropy.coordinates import EarthLocation, SkyCoord, ITRS
+from astropy.coordinates import EarthLocation, SkyCoord, ITRS, AltAz
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -38,9 +38,11 @@ from rascil.processing_components import create_skycomponent, find_skycomponents
 from rascil.processing_components import show_image, export_image_to_fits, qa_image, smooth_image
 from rascil.processing_components import advise_wide_field, create_image_from_visibility, \
     predict_skycomponent_visibility
+from rascil.processing_components.util import azel_to_hadec
 from muser.data_models.muser_data import MuserData
 from muser.data_models.muser_phase import MuserPhase
 from muser.data_models.parameters import muser_path, muser_data_path, muser_output_path
+
 from rascil.processing_components.visibility.coalesce import convert_visibility_to_blockvisibility, \
     convert_blockvisibility_to_visibility
 import logging
@@ -179,15 +181,18 @@ def main(args):
 
         obs_time = muser.first_frame_time + 0.025 * u.second
         # TODO - J2000.0
-        phasecentre = get_body('sun', obs_time, location)
+        phasecentre = get_body('sun', muser.first_frame_utc_time,location=location,ephemeris='de432s')
 
         # convert phasecentre into ITRS coordinate
-        c_ITRS = phasecentre.transform_to(ITRS(obstime=muser.current_frame_utc_time))
+        c_ITRS = phasecentre.transform_to(ITRS(obstime=muser.first_frame_utc_time))
+        c_AltAz = phasecentre.transform_to(AltAz(obstime=muser.first_frame_utc_time,location=location))
         local_ha = location.lon - c_ITRS.spherical.lon
         local_ha.wrap_at(24 * u.hourangle, inplace=True)
 
-        print("UTC: {} Local Hour Angle: {}".format(muser.first_frame_time,local_ha.to('rad').value))
-        times.append([local_ha.to('rad').value])
+        ha, dec = azel_to_hadec(c_AltAz.az, c_AltAz.alt, location.geodetic[1])
+
+        print("UTC: {} Local Hour Angle: {} {} ".format(muser.first_frame_utc_time, local_ha.to('rad').value,ha.to('rad').value))
+        times.append([ha.to('rad').value]) #[local_ha.to('rad').value])
         integration_time.append(0.025)
 
         # phasecentre = SkyCoord(ra=+15.0 * u.deg, dec=-45.0 * u.deg, frame='icrs', equinox='J2000')
@@ -197,7 +202,7 @@ def main(args):
             muser.current_frame_utc_time.datetime.year, muser.current_frame_utc_time.datetime.month,
             muser.current_frame_utc_time.datetime.day), format='isot')
         # Phase Calibration
-        muser.phase_calibration( phase_cal.phase_data)
+        muser.phase_calibration(phase_cal.phase_data)
 
         # Inject data into blockvisibility
         vis_data[count, :, :, :, 1] = muser.block_full_data[:, :, :, 0]
@@ -229,41 +234,6 @@ def main(args):
     export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
 
     print("Done. ")
-
-    # # matplotlib.use('Agg')
-    #
-    # from matplotlib import pylab
-    #
-    # from matplotlib import pyplot as plt
-    # vt = convert_blockvisibility_to_visibility(bvis)
-    # plt.clf()
-    # plt.plot(vt.data['uvw'][:, 0], vt.data['uvw'][:, 1], '.', color='b')
-    # plt.plot(-vt.data['uvw'][:, 0], -vt.data['uvw'][:, 1], '.', color='r')
-    # plt.xlabel('U (wavelengths)')
-    # plt.ylabel('V (wavelengths)')
-    # plt.title("UV coverage")
-    # # plt.savefig(storedir + '/UV_coverage.pdf', format='pdf')
-    # plt.show()
-
-    #
-    # advice = advise_wide_field(vt, guard_band_image=3.0, delA=0.1, facets=1, wprojection_planes=1,
-    #                            oversampling_synthesised_beam=4.0)
-    # cellsize = advice['cellsize']
-
-    # uvdist = numpy.sqrt(vt.data['uvw'][:, 0] ** 2 + vt.data['uvw'][:, 1] ** 2)
-    #
-    # model = create_image_from_visibility(vt, cellsize=cellsize, npixel=512)
-    # dirty, sumwt = invert_list_serial_workflow([vt], [model], context='2d')[0]
-    # psf, sumwt = invert_list_serial_workflow([vt], [model], context='2d', dopsf=True)[0]
-    #
-    # show_image(dirty)
-    # print("Max, min in dirty image = %.6f, %.6f, sumwt = %f" % (dirty.data.max(), dirty.data.min(), sumwt))
-    #
-    # print("Max, min in PSF         = %.6f, %.6f, sumwt = %f" % (psf.data.max(), psf.data.min(), sumwt))
-    # results_dir="/Users/f.wang"
-    # export_image_to_fits(dirty, '%s/imaging_dirty.fits' % (results_dir))
-    # export_image_to_fits(psf, '%s/imaging_psf.fits' % (results_dir))
-
 
 if __name__ == '__main__':
     import argparse

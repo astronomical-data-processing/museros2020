@@ -51,6 +51,7 @@ class MuserFrame(MuserBase):
         self.channel_group = 0
         self.current_frame_time = 0
         self.current_frame_utc_time = 0
+        self.first_frame_utc_time = 0
         self.polarization_number = 2
         self.first_frame_time = 0
 
@@ -330,6 +331,9 @@ class MuserFrame(MuserBase):
         self.sub_band = self.channel_group // 16
         if self.is_loop_mode and self.sub_band == 0 and self.polarization == 0:
             self.first_frame_time = self.current_frame_time
+            self.first_frame_utc_time = self.first_frame_time - 8 * u.hour
+
+
         elif self.is_loop_mode == False:
             self.first_frame_time = self.current_frame_time
 
