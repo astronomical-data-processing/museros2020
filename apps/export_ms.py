@@ -92,7 +92,7 @@ def main(args):
 
     location = EarthLocation(lon=115.2505 * u.deg, lat=42.211833333 * u.deg, height=1365.0 * u.m)
 
-    muser = MuserData(sub_array=1)
+    muser = MuserData(sub_array=args.muser)
     if not muser.init_data_environment():
         print("No data environment prepared, exit.")
         return -1
@@ -238,8 +238,8 @@ def main(args):
 if __name__ == '__main__':
     import argparse
 
-    parser = argparse.ArgumentParser(description='List Muser Data Information for Each Frame')
-    parser.add_argument('-m', "--muser", type=str, default='1', help='The MUSER array')
+    parser = argparse.ArgumentParser(description='Output Measurement Set Files')
+    parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
     parser.add_argument('-c', "--calib", type=str, default='', help='The Calibration file name')
     parser.add_argument('-f', "--file", type=str, default='', help='The file name')
     parser.add_argument('-l', "--line", type=int, default=1, help='The number of frames')
