@@ -56,6 +56,7 @@ class Phase:
         print("Current Observational Time UTC:  {}".format(muser_calibration.current_frame_utc_time.isot))
         print("Observational Mode: {} \nFrequency {}".format("LOOP" if muser_calibration.is_loop_mode else "Non Loop",
                                                              muser_calibration.frequency))
+        print("Target: {}".format(muser_calibration.obs_target))
         print("First frame Sub Band: {} - Sub Channel {}".format(muser_calibration.sub_band, muser_calibration.sub_channels))
 
         # count total frames

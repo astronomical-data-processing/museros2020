@@ -81,7 +81,7 @@ vt = convert_blockvisibility_to_visibility(vis[0])
 vt = convert_blockvisibility_to_visibility(vis[0])
 
 advice = advise_wide_field(vt, guard_band_image=3.0, delA=0.1, facets=1, wprojection_planes=1,
-                           oversampling_synthesised_beam=4.0)
+                           oversampling_synthesised_beam=3.0)
 cellsize = advice['cellsize']
 
 plt.clf()

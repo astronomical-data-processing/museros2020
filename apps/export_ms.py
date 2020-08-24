@@ -27,7 +27,7 @@ from astropy.wcs.utils import pixel_to_skycoord
 from rascil.data_models.polarisation import PolarisationFrame
 from astropy.coordinates import solar_system_ephemeris, EarthLocation
 from astropy.coordinates import get_body_barycentric, get_body, get_moon
-
+from copy import deepcopy
 from rascil.processing_components import image_raster_iter
 from rascil.processing_components import create_visibility
 # from rascil.processing_components import sum_visibility
@@ -205,8 +205,8 @@ def main(args):
         muser.phase_calibration(phase_cal.phase_data)
 
         # Inject data into blockvisibility
-        vis_data[count, :, :, :, 1] = muser.block_full_data[:, :, :, 0]
-        vis_data[count, :, :, :, 0] = muser.block_full_data[:, :, :, 1]
+        vis_data[count, :, :, :, 1] = deepcopy(muser.block_full_data[:, :, :, 0])
+        vis_data[count, :, :, :, 0] = deepcopy(muser.block_full_data[:, :, :, 1])
         count = count + 1
 
     times = numpy.array(times)
