@@ -12,6 +12,7 @@ from astropy import units as u
 import numpy
 import logging
 from muser.data_models.parameters import muser_path, muser_data_path
+from muser.components.ephem.sun_position import get_sun
 
 log = logging.getLogger('muser')
 
@@ -280,9 +281,10 @@ class MuserData(MuserFrame):
 
     def read_one_data_for_full(self, ):
         self.read_data()
+        from copy import deepcopy
         self.block_full_data[:, :,
-        self.real_sub_band * self.sub_channels: self.real_sub_band * self.sub_channels + 16,
-        self.real_polarization] = self.block_data[:, :, :]
+            self.real_sub_band * self.sub_channels: self.real_sub_band * self.sub_channels + 16,
+            self.real_polarization] = deepcopy(self.block_data[:, :, :])
 
     def read_full_frame(self, search=True, read_data=False):
         while True:
@@ -296,6 +298,7 @@ class MuserData(MuserFrame):
                         self.polarization))
                     if not self.read_one_frame():
                         return False
+                    print(self.current_frame_time)
                     if read_data:
                         self.read_one_data_for_full()
                     if frame == 0:

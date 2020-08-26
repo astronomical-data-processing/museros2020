@@ -26,7 +26,7 @@ from astropy.wcs.utils import pixel_to_skycoord
 
 from rascil.data_models.polarisation import PolarisationFrame
 from astropy.coordinates import solar_system_ephemeris, EarthLocation
-from astropy.coordinates import get_body_barycentric, get_body, get_moon
+from muser.components.ephem.sun_position import get_sun
 from copy import deepcopy
 from rascil.processing_components import image_raster_iter
 from rascil.processing_components import create_visibility
@@ -77,7 +77,72 @@ def create_configuration(name: str = 'LOWBD2', **kwargs):
                                                  diameter=4.5, name='MUSER', location=location, **kwargs)
     return lowcore
 
+def computeUVW(xyz, H, d):
+    """ Converts X-Y-Z coordinates into U-V-W
 
+    Uses the transform from Thompson Moran Swenson (4.1, pg86)
+
+    Parameters
+    ----------
+    xyz: should be a numpy array [x,y,z]
+    H: float (degrees)
+      is the hour angle of the phase reference position
+    d: float (degrees)
+      is the declination
+    """
+    import math
+    H, d = map(math.radians, (H, d))
+    sin = numpy.sin
+    cos = numpy.cos
+
+    xyz = numpy.matrix(xyz)  # Cast into a matrix
+
+    trans = numpy.matrix([
+        [sin(H), cos(H), 0],
+        [-sin(d) * cos(H), sin(d) * sin(H), cos(d)],
+        [cos(d) * cos(H), -cos(d) * sin(H), sin(d)]
+    ])
+
+    uvw = trans * xyz.T
+
+    uvw = numpy.array(uvw)
+
+    return uvw[:, 0]
+
+def enu2xyz(lat, locx=0.0, locy=0.0, locz=0.0):
+    pass
+
+def locxyz2itrf(lat, longitude, locx=0.0, locy=0.0, locz=0.0):
+    """
+    Returns the nominal ITRF (X, Y, Z) coordinates (m) for a point at "local"
+    (x, y, z) (m) measured at geodetic latitude lat and longitude longitude
+    (degrees).  The ITRF frame used is not the official ITRF, just a right
+    handed Cartesian system with X going through 0 latitude and 0 longitude,
+    and Z going through the north pole.  The "local" (x, y, z) are measured
+    relative to the closest point to (lat, longitude) on the WGS84 reference
+    ellipsoid, with z normal to the ellipsoid and y pointing north.
+    """
+    # from Rob Reid;  need to generalize to use any datum...
+    import math
+    phi, lmbda = map(math.radians, (lat, longitude))
+    sphi = math.sin(phi)
+    a = 6378137.0  # WGS84 equatorial semimajor axis
+    b = 6356752.3142  # WGS84 polar semimajor axis
+    ae = math.acos(b / a)
+    N = a / math.sqrt(1.0 - (math.sin(ae) * sphi) ** 2)
+
+    # Now you see the connection between the Old Ones and Antarctica...
+    # Nploczcphimlocysphi = (N + locz) * pl.cos(phi) - locy * sphi
+    Nploczcphimlocysphi = (N + locz) * math.cos(phi) - locy * sphi
+
+    clmb = numpy.cos(lmbda)
+    slmb = numpy.sin(lmbda)
+
+    x = Nploczcphimlocysphi * clmb - locx * slmb
+    y = Nploczcphimlocysphi * slmb + locx * clmb
+    z = (N * (b / a) ** 2 + locz) * sphi + locy * math.cos(phi)
+
+    return x, y, z
 # def read_muser_data(file_name: str=''):
 
 
@@ -120,7 +185,13 @@ def main(args):
         exit(1)
     print("File shape", phase_cal.phase_data.shape)
 
-    # Create configuration of RASCIL
+    # # Create configuration of RASCIL
+    # xx,yy,zz = locxyz2itrf(42.211833333,115.2505,0,0,1365)
+    #
+    # for x,y,z in muser_core.xyz:
+    #     x,y,z = locxyz2itrf(42.211833333,115.2505,x,y,z+1365)
+    #     print('{},{},{}'.format(x,y,z))
+
     muser_core = create_configuration(muser_array)
 
     # Create Phase Centre
@@ -179,23 +250,20 @@ def main(args):
             else:
                 muser.delay_process('sun')
 
-        obs_time = muser.first_frame_time + 0.025 * u.second
+        obs_time = muser.first_frame_utc_time #+ 0.0125 * u.second
         # TODO - J2000.0
-        phasecentre = get_body('sun', muser.first_frame_utc_time,location=location,ephemeris='de432s')
+        Alpha, Delta, ha, Thete_z, Phi = get_sun(obs_time)
+        # with solar_system_ephemeris.set('de432s'):
+        #     p1 = get_body('sun', muser.first_frame_utc_time, location)
+        # phasecentre = get_body('sun', muser.first_frame_utc_time,ephemeris='de432s')
+        # phasecentre = get_body('sun', muser.first_frame_utc_time,location=location,ephemeris='de432s')
 
-        # convert phasecentre into ITRS coordinate
-        c_ITRS = phasecentre.transform_to(ITRS(obstime=muser.first_frame_utc_time))
-        c_AltAz = phasecentre.transform_to(AltAz(obstime=muser.first_frame_utc_time,location=location))
-        local_ha = location.lon - c_ITRS.spherical.lon
-        local_ha.wrap_at(24 * u.hourangle, inplace=True)
-
-        ha, dec = azel_to_hadec(c_AltAz.az, c_AltAz.alt, location.geodetic[1])
-
-        print("UTC: {} Local Hour Angle: {} {} ".format(muser.first_frame_utc_time, local_ha.to('rad').value,ha.to('rad').value))
-        times.append([ha.to('rad').value]) #[local_ha.to('rad').value])
+        obs_time = Time(muser.first_frame_utc_time, location=location)
+        lst_apparent = obs_time.sidereal_time('apparent')
+        times.append([(ha*u.deg).to('rad').value]) #[local_ha.to('rad').value])
         integration_time.append(0.025)
 
-        # phasecentre = SkyCoord(ra=+15.0 * u.deg, dec=-45.0 * u.deg, frame='icrs', equinox='J2000')
+        phasecentre = SkyCoord(ra=Alpha * u.deg, dec=Delta * u.deg, frame='icrs', equinox='J2000')
 
         # visshape = [ntimes, nants, nants, nchan, npol]
         utc_time = Time('%04d-%02d-%2dT00:00:00' % (

@@ -33,12 +33,12 @@ class TestReadData(unittest.TestCase):
         check_data_directory()
 
     def test_read_data(self):
-        data_file_name = muser_data_path('CSRH_20151122-094000_89058131') #CSRH_20151122-125000_100457483')
+        data_file_name = muser_data_path('CSRH_20151122-125000_100457483')
         muser = MuserDataReader(1, file_name=data_file_name)
         if not muser.search_first_file():
             log.info('Cannot find the data file.')
             exit(1)
-        muser.skip_frames(10)
+        muser.skip_frames(11)
         if not muser.read_one_frame():
             log.error("Cannot read proper frame")
             exit(1)
@@ -48,7 +48,7 @@ class TestReadData(unittest.TestCase):
             print("Cannot find phase calibration file. ")
             exit(1)
         print("File shape", phase_cal.phase_data.shape)
-        phase_cal_file = numpy.arctan2(phase_cal.phase_data.imag/phase_cal.phase_data.real)
+        phase_cal_file = numpy.arctan2(phase_cal.phase_data.imag,phase_cal.phase_data.real)
         print(muser.current_frame_time)
         if muser.read_data():
             phase = numpy.arctan2(muser.block_data.imag/muser.block_data.real)
