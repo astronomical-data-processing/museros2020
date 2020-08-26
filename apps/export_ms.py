@@ -77,37 +77,6 @@ def create_configuration(name: str = 'LOWBD2', **kwargs):
                                                  diameter=4.5, name='MUSER', location=location, **kwargs)
     return lowcore
 
-def computeUVW(xyz, H, d):
-    """ Converts X-Y-Z coordinates into U-V-W
-
-    Uses the transform from Thompson Moran Swenson (4.1, pg86)
-
-    Parameters
-    ----------
-    xyz: should be a numpy array [x,y,z]
-    H: float (degrees)
-      is the hour angle of the phase reference position
-    d: float (degrees)
-      is the declination
-    """
-    import math
-    H, d = map(math.radians, (H, d))
-    sin = numpy.sin
-    cos = numpy.cos
-
-    xyz = numpy.matrix(xyz)  # Cast into a matrix
-
-    trans = numpy.matrix([
-        [sin(H), cos(H), 0],
-        [-sin(d) * cos(H), sin(d) * sin(H), cos(d)],
-        [cos(d) * cos(H), -cos(d) * sin(H), sin(d)]
-    ])
-
-    uvw = trans * xyz.T
-
-    uvw = numpy.array(uvw)
-
-    return uvw[:, 0]
 
 def enu2xyz(lat, locx=0.0, locy=0.0, locz=0.0):
     pass
@@ -187,12 +156,10 @@ def main(args):
 
     # # Create configuration of RASCIL
     # xx,yy,zz = locxyz2itrf(42.211833333,115.2505,0,0,1365)
-    #
+    muser_core = create_configuration(muser_array)
     # for x,y,z in muser_core.xyz:
     #     x,y,z = locxyz2itrf(42.211833333,115.2505,x,y,z+1365)
-    #     print('{},{},{}'.format(x,y,z))
-
-    muser_core = create_configuration(muser_array)
+    #     print('{},{},{}'.format(x-xx,y-yy,z-zz))
 
     # Create Phase Centre
     # TODO: need to compute the position of the SUN

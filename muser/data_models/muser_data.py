@@ -298,7 +298,7 @@ class MuserData(MuserFrame):
                         self.polarization))
                     if not self.read_one_frame():
                         return False
-                    print(self.current_frame_time)
+                    log.debug("Frame time:{}".format(self.current_frame_time))
                     if read_data:
                         self.read_one_data_for_full()
                     if frame == 0:
