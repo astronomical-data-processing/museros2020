@@ -117,7 +117,7 @@ def main(args):
     # count total frames
     muser.search_frame(search_time=start_time)
     total_frames = muser.count_frame_number(start_time, end_time)
-    print("Total {} frmes would be processed".format(total_frames))
+    print("Total {} frames will be processed.".format(total_frames))
 
     # Load Phase Calibration Data
     print("Loading Phase Calibration File")
@@ -125,7 +125,6 @@ def main(args):
     if not phase_cal.load_calibration_data():
         print("Cannot find phase calibration file. ")
         exit(1)
-    print("File shape", phase_cal.phase_data.shape)
 
     # # Create configuration of RASCIL
     # xx,yy,zz = locxyz2itrf(42.211833333,115.2505,0,0,1365)

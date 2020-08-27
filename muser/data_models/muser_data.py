@@ -309,7 +309,7 @@ class MuserData(MuserFrame):
                     #       (self.current_frame_time - self.first_frame_time).to_value('s'))
 
                     if (self.current_frame_time - current_time).to_value('s') >= 4 / 1000.:
-                        print("Not a full frame")
+                        # print("Find a Not a frame lost.")
                         if self.search_frame(self.current_frame_time.isot):
                             break
                         else:
