@@ -111,17 +111,15 @@ class MuserData(MuserFrame):
         return True
 
     def open_next_file(self, time_minute=1):
-        search_date_time = self.start_data_time + time_minute * u.minute
+        search_date_time = self.start_date_time + time_minute * u.minute
 
         full_file_name = self.muser_data_file_name(search_date_time.datetime.year,
                                                    search_date_time.datetime.month,
                                                    search_date_time.datetime.day,
                                                    search_date_time.datetime.hour,
                                                    search_date_time.datetime.minute)
-        for file in self.file_list:
-            if full_file_name in file:
-                return self.open_raw_file(file)
-        return False
+        self.input_file_name = full_file_name
+        return self.open_data_file()
 
     def muser_data_file_name(self, year, month, day, hour, minute):
         file_name = ('CSRH_%04d%02d%02d-%02d%02d') % (year, month, day, hour, minute)

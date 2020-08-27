@@ -4,6 +4,44 @@
 
 import numpy
 import math
+from astropy.units import u
+
+def ecef_to_enu( x,  y,  z, lat0, lon0, h0):
+    #  Convert to radians in notation consistent with the paper:
+    a = 6378137.0         # WGS-84 Earth semimajor axis (m)
+
+    b = 6356752.314245     # Derived Earth semiminor axis (m)
+    f = (a - b) / a           # Ellipsoid Flatness
+    f_inv = 1.0 / f       #Inverse flattening
+
+    a_sq = a * a
+    b_sq = b * b
+    e_sq = f * (2 - f)    # Square of Eccentricity
+
+    n_lambda = lat0*numpy.pi/180.
+    phi = lon0*numpy.pi/180.
+    s = numpy.sin(n_lambda)
+    N = a / numpy.sqrt(1 - e_sq * s * s)
+
+    sin_lambda = math.sin(n_lambda)
+    cos_lambda = math.cos(n_lambda)
+    cos_phi = math.cos(phi)
+    sin_phi = math.sin(phi)
+
+    x0 = (h0 + N) * cos_lambda * cos_phi
+    y0 = (h0 + N) * cos_lambda * sin_phi
+    z0 = (h0 + (1 - e_sq) * N) * sin_lambda
+
+    xd = x - x0
+    yd = y - y0
+    zd = z - z0
+
+    # This is the matrix multiplication
+    xEast = -sin_phi * xd + cos_phi * yd
+    yNorth = -cos_phi * sin_lambda * xd - sin_lambda * sin_phi * yd + cos_lambda * zd
+    zUp = cos_lambda * cos_phi * xd + cos_lambda * sin_phi * yd + sin_lambda * zd
+    return xEast,yNorth,zUp
+
 
 def locxyz2itrf(lat, longitude, locx=0.0, locy=0.0, locz=0.0):
     """
