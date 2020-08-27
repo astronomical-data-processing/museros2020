@@ -58,6 +58,15 @@ try:
 except:
     run_ms_tests = False
 
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def create_configuration(name: str = 'LOWBD2', **kwargs):
     from muser.data_models.parameters import muser_path
@@ -76,43 +85,6 @@ def create_configuration(name: str = 'LOWBD2', **kwargs):
                                                  mount='altaz', names='MUSER_%d',
                                                  diameter=4.5, name='MUSER', location=location, **kwargs)
     return lowcore
-
-
-def enu2xyz(lat, locx=0.0, locy=0.0, locz=0.0):
-    pass
-
-def locxyz2itrf(lat, longitude, locx=0.0, locy=0.0, locz=0.0):
-    """
-    Returns the nominal ITRF (X, Y, Z) coordinates (m) for a point at "local"
-    (x, y, z) (m) measured at geodetic latitude lat and longitude longitude
-    (degrees).  The ITRF frame used is not the official ITRF, just a right
-    handed Cartesian system with X going through 0 latitude and 0 longitude,
-    and Z going through the north pole.  The "local" (x, y, z) are measured
-    relative to the closest point to (lat, longitude) on the WGS84 reference
-    ellipsoid, with z normal to the ellipsoid and y pointing north.
-    """
-    # from Rob Reid;  need to generalize to use any datum...
-    import math
-    phi, lmbda = map(math.radians, (lat, longitude))
-    sphi = math.sin(phi)
-    a = 6378137.0  # WGS84 equatorial semimajor axis
-    b = 6356752.3142  # WGS84 polar semimajor axis
-    ae = math.acos(b / a)
-    N = a / math.sqrt(1.0 - (math.sin(ae) * sphi) ** 2)
-
-    # Now you see the connection between the Old Ones and Antarctica...
-    # Nploczcphimlocysphi = (N + locz) * pl.cos(phi) - locy * sphi
-    Nploczcphimlocysphi = (N + locz) * math.cos(phi) - locy * sphi
-
-    clmb = numpy.cos(lmbda)
-    slmb = numpy.sin(lmbda)
-
-    x = Nploczcphimlocysphi * clmb - locx * slmb
-    y = Nploczcphimlocysphi * slmb + locx * clmb
-    z = (N * (b / a) ** 2 + locz) * sphi + locy * math.cos(phi)
-
-    return x, y, z
-# def read_muser_data(file_name: str=''):
 
 
 def main(args):
@@ -144,7 +116,7 @@ def main(args):
 
     # count total frames
     muser.search_frame(search_time=args.start)
-    total_frames = muser.count_frame_number(args.start, args.end)
+    total_frames = muser.count_frame_number(start_time, end_time)
 
     # Load Phase Calibration Data
     print("Loading Phase Calibration File")
@@ -161,8 +133,6 @@ def main(args):
     #     x,y,z = locxyz2itrf(42.211833333,115.2505,x,y,z+1365)
     #     print('{},{},{}'.format(x-xx,y-yy,z-zz))
 
-    # Create Phase Centre
-    # TODO: need to compute the position of the SUN
     freq = []
     if muser.is_loop_mode:
         if muser.sub_array == 1:
@@ -186,7 +156,6 @@ def main(args):
     frequency = numpy.array(freq)
     integration_time = []  # numpy.array([0.025])
     times = []
-    solar_system_ephemeris.set('de432s')
 
     # Re-Search file
     if not muser.search_first_file(frame_time=args.start):
@@ -218,15 +187,10 @@ def main(args):
                 muser.delay_process('sun')
 
         obs_time = muser.first_frame_utc_time #+ 0.0125 * u.second
-        # TODO - J2000.0
+        print("No.{} : Observation time (UTC) {}".format(count,obs_time))
+        # Compute the position of the Sun
         Alpha, Delta, ha, Thete_z, Phi = get_sun(obs_time)
-        # with solar_system_ephemeris.set('de432s'):
-        #     p1 = get_body('sun', muser.first_frame_utc_time, location)
-        # phasecentre = get_body('sun', muser.first_frame_utc_time,ephemeris='de432s')
-        # phasecentre = get_body('sun', muser.first_frame_utc_time,location=location,ephemeris='de432s')
 
-        obs_time = Time(muser.first_frame_utc_time, location=location)
-        lst_apparent = obs_time.sidereal_time('apparent')
         times.append([(ha*u.deg).to('rad').value]) #[local_ha.to('rad').value])
         integration_time.append(0.025)
 
@@ -264,8 +228,11 @@ def main(args):
     bvis.vis[...] = copy.deepcopy(vis_data[...])
     vis_list = []
     vis_list.append(bvis)
-
-    export_file_name = muser_output_path(data_file_name) + '.ms'
+    # Output results
+    if len(args.output)==0:
+        export_file_name = muser_output_path(data_file_name) + '.ms'
+    else:
+        export_file_name = muser_output_path(args.output) + '.ms'
     export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
 
     print("Done. ")
@@ -277,8 +244,8 @@ if __name__ == '__main__':
     parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
     parser.add_argument('-c', "--calib", type=str, default='', help='The Calibration file name')
     parser.add_argument('-f', "--file", type=str, default='', help='The file name')
-    parser.add_argument('-l', "--line", type=int, default=1, help='The number of frames')
     parser.add_argument('-s', "--start", type=str, default='', help='The beginning time ')
     parser.add_argument('-e', "--end", type=str, default='', help='The end time ')
-    parser.add_argument('-t', "--fringe", type=bool, default=False, help='Fringe Stop')
+    parser.add_argument('-t', "--fringe", type=str2bool, nargs = '?', const=True, default=False, help='Fringe Stop')
+    parser.add_argument('-o', "--output", type=str, default='', help='The output file name')
     main(parser.parse_args())
