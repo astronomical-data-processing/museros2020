@@ -115,8 +115,9 @@ def main(args):
     print("Sub Band: {} - Sub Channel {}".format(muser.sub_band, muser.sub_channels))
 
     # count total frames
-    muser.search_frame(search_time=args.start)
+    muser.search_frame(search_time=start_time)
     total_frames = muser.count_frame_number(start_time, end_time)
+    print("Total {} frmes would be processed".format(total_frames))
 
     # Load Phase Calibration Data
     print("Loading Phase Calibration File")
@@ -234,7 +235,7 @@ def main(args):
     else:
         export_file_name = muser_output_path(args.output) + '.ms'
     export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
-
+    print("Export file: {}".format(export_file_name))
     print("Done. ")
 
 if __name__ == '__main__':

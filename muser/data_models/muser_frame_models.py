@@ -215,9 +215,9 @@ class MuserFrame(MuserBase):
         tmp_time = struct.unpack('Q', tmp)[0]
 
         self.current_frame_time = self.convert_time(tmp_time)
-        # if self.Debug:
-        log.debug("Read frame date and time: %s " % self.current_frame_time.isot)
 
+        log.debug("Read frame date and time: %s " % self.current_frame_time.isot)
+        # print("Read frame date and time: %s " % self.current_frame_time.isot)
         self.current_frame_date_time = self.current_frame_time
 
         # the date and time are beijing time of china, utc = cst - 8

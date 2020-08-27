@@ -36,6 +36,7 @@ class MuserData(MuserFrame):
         self.current_file_name = ''
         self.file_list = []
         self.if_file_opened = False
+        self.need_change_file = False
         if file_name is not None:
             self.input_file_name = file_name
         if start_time is not None:
@@ -111,7 +112,7 @@ class MuserData(MuserFrame):
         return True
 
     def open_next_file(self, time_minute=1):
-        search_date_time = self.start_date_time + time_minute * u.minute
+        search_date_time = self.current_frame_time + time_minute * u.minute
 
         full_file_name = self.muser_data_file_name(search_date_time.datetime.year,
                                                    search_date_time.datetime.month,
@@ -210,7 +211,7 @@ class MuserData(MuserFrame):
 
         # time_offset = t_offset.datetime.second * 1e6 + t_offset.datetime.microsecond
 
-        skip_frame_number = int(time_offset / 3125) - 1
+        skip_frame_number = int(time_offset / 3125) - 20
 
         log.debug('Time interval %d, skip frames: %d' % (time_offset, skip_frame_number))
 
@@ -219,15 +220,16 @@ class MuserData(MuserFrame):
 
         # If can find, search first frame
         while True:
+            if self.read_one_frame() == False:
+                return False
             if self.is_loop_mode == False:
                 if self.start_date_time <= self.current_frame_time:
                     break
             else:
                 if search_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
                     break
-
-            if self.read_one_frame() == False:
-                return False
+            if self.current_frame_time == self.file_end_time:
+                self.open_next_file(1)
 
         log.debug('Frame located.')
         self.skip_frames(0)
@@ -303,18 +305,23 @@ class MuserData(MuserFrame):
                         current_time = self.current_frame_time
                     # print(self.current_frame_time, current_time, self.sub_band, self.polarization,
                     #       (self.current_frame_time - self.first_frame_time).to_value('s'))
+
                     if (self.current_frame_time - current_time).to_value('s') >= 4 / 1000.:
                         print("Not a full frame")
-                        if not self.search_frame(self.current_frame_time.isot):
+                        if self.search_frame(self.current_frame_time.isot):
                             break
                         else:
                             return False
                     else:
                         frame = frame + 1
                     current_time = self.current_frame_time
+                    if self.current_frame_time == self.file_end_time:
+                        self.open_next_file(1)
                 else:
                     break
             else:
+                if self.current_frame_time == self.file_end_time:
+                    self.open_next_file(1)
                 if not self.read_one_frame():
                     return False
                 if read_data:

@@ -11,8 +11,7 @@ from muser.components.utils.installation_checks import check_data_directory
 
 class TestDataPath(unittest.TestCase):
     def test_muser_data_path(self):
-        data_path = muser_data_path('configurations')
-        check_data_directory()
+w        check_data_directory()
 
 
 if __name__ == '__main__':
