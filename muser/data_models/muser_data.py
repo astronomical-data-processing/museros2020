@@ -211,7 +211,9 @@ class MuserData(MuserFrame):
 
         # time_offset = t_offset.datetime.second * 1e6 + t_offset.datetime.microsecond
 
-        skip_frame_number = int(time_offset / 3125) - 20
+        skip_frame_number = int(time_offset / 3125)
+        if skip_frame_number>=20:
+            skip_frame_number = skip_frame_number - 20
 
         log.debug('Time interval %d, skip frames: %d' % (time_offset, skip_frame_number))
 
