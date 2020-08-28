@@ -180,11 +180,7 @@ def main(args):
             exit(1)
         # Delay processing for the Sun
         if fringe:
-            if muser.sub_array == 2:
-                if muser.current_frame_header.strip_switch == 0xCCCCCCCC:
-                    muser.delay_process("sun")
-            else:
-                muser.delay_process('sun')
+            muser.delay_process('sun')
 
         obs_time = muser.first_frame_utc_time #+ 0.0125 * u.second
         print("No.{} : Observation time (UTC) {}".format(count,obs_time))

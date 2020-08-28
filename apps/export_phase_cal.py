@@ -108,11 +108,7 @@ class Phase:
 
             # Delay processing for satellite
             if self.fringe_stop:
-                if self.sub_array == 2:
-                    if muser_calibration.current_frame_header.strip_switch == 0xCCCCCCCC:
-                        muser_calibration.delay_process("satellite")
-                else:
-                    muser_calibration.delay_process('satellite')
+                muser_calibration.delay_process('satellite')
 
             self.last_sub_band = muser_calibration.sub_band
             self.last_polarization = muser_calibration.polarization
