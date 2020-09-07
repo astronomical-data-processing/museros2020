@@ -10,6 +10,7 @@ import argparse
 
 # from matplotlib import plt.savefig
 from astropy.coordinates import EarthLocation, SkyCoord, ITRS, AltAz
+from astropy.coordinates import get_body_barycentric, get_body, get_moon
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -156,7 +157,7 @@ def main(args):
     frequency = numpy.array(freq)
     integration_time = []  # numpy.array([0.025])
     times = []
-
+    utc_times = []
     # Re-Search file
     if not muser.search_first_file(frame_time=args.start):
         print("Cannot find observational data or not a MUSER file.")
@@ -182,7 +183,11 @@ def main(args):
         if fringe:
             muser.delay_process('sun')
 
-        obs_time = muser.first_frame_utc_time #+ 0.0125 * u.second
+        if muser.is_loop_mode:
+            obs_time = muser.first_frame_utc_time + 0.0125 * u.second
+        else:
+            obs_time = muser.first_frame_utc_time + 0.0015625 * u.second
+        utc_times.append(obs_time)
         print("No.{} : Observation time (UTC) {}".format(count,obs_time))
         # Compute the position of the Sun
         Alpha, Delta, ha, Thete_z, Phi = get_sun(obs_time)
@@ -193,9 +198,9 @@ def main(args):
         phasecentre = SkyCoord(ra=Alpha * u.deg, dec=Delta * u.deg, frame='icrs', equinox='J2000')
 
         # visshape = [ntimes, nants, nants, nchan, npol]
-        utc_time = Time('%04d-%02d-%2dT00:00:00' % (
-            muser.current_frame_utc_time.datetime.year, muser.current_frame_utc_time.datetime.month,
-            muser.current_frame_utc_time.datetime.day), format='isot')
+        # utc_time = Time('%04d-%02d-%2dT00:00:00' % (
+        #     muser.current_frame_utc_time.datetime.year, muser.current_frame_utc_time.datetime.month,
+        #     muser.current_frame_utc_time.datetime.day), format='isot')
         # Phase Calibration
         muser.phase_calibration(phase_cal.phase_data)
 
@@ -212,14 +217,14 @@ def main(args):
                                       channel_bandwidth=channelbandwidth,
                                       integration_time=integration_time,
                                       source='SUN',
-                                      utc_time=utc_time)
+                                      utc_time=utc_times)
     else:
         bvis = create_blockvisibility(muser_core, times, frequency, phasecentre=phasecentre,
                                       weight=1.0, polarisation_frame=PolarisationFrame('stokesI'),
                                       channel_bandwidth=channelbandwidth,
                                       integration_time=integration_time,
                                       source='SUN',
-                                      utc_time=utc_time)
+                                      utc_time=utc_times)
     bvis.data['vis'] = copy.deepcopy(vis_data)
     bvis.vis[...] = copy.deepcopy(vis_data[...])
     vis_list = []
