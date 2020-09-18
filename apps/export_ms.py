@@ -198,9 +198,9 @@ def main(args):
         phasecentre = SkyCoord(ra=Alpha * u.deg, dec=Delta * u.deg, frame='icrs', equinox='J2000')
 
         # visshape = [ntimes, nants, nants, nchan, npol]
-        # utc_time = Time('%04d-%02d-%2dT00:00:00' % (
-        #     muser.current_frame_utc_time.datetime.year, muser.current_frame_utc_time.datetime.month,
-        #     muser.current_frame_utc_time.datetime.day), format='isot')
+        utc_time = Time('%04d-%02d-%2dT00:00:00' % (
+            muser.current_frame_utc_time.datetime.year, muser.current_frame_utc_time.datetime.month,
+            muser.current_frame_utc_time.datetime.day), format='isot')
         # Phase Calibration
         muser.phase_calibration(phase_cal.phase_data)
 
@@ -217,7 +217,7 @@ def main(args):
                                       channel_bandwidth=channelbandwidth,
                                       integration_time=integration_time,
                                       source='SUN',
-                                      utc_time=utc_times)
+                                      utc_time=utc_time)
     else:
         bvis = create_blockvisibility(muser_core, times, frequency, phasecentre=phasecentre,
                                       weight=1.0, polarisation_frame=PolarisationFrame('stokesI'),
