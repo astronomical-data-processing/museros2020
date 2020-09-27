@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 # %matplotlib inline
 
 import os

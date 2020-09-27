@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 """Check MUSER Raw data Integrity
 
 """
