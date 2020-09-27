@@ -219,7 +219,7 @@ def main(args):
                                       channel_bandwidth=channelbandwidth,
                                       integration_time=integration_time,
                                       source='SUN',
-                                      utc_time=utc_time)
+                                      utc_time=utc_times)
     else:
         bvis = create_blockvisibility(muser_core, times, frequency, phasecentre=phasecentre,
                                       weight=1.0, polarisation_frame=PolarisationFrame('stokesI'),
