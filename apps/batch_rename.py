@@ -45,11 +45,12 @@ def main(args):
         current_frame_time = muser.current_frame_time
         muser.close_file()
 
-        new_file_name = ('CSRH_%04d%02d%02d-%02d%02d') % (current_frame_time.datetime.year,
+        new_file_name = ('CSRH_%04d%02d%02d-%02d%02d%2d') % (current_frame_time.datetime.year,
                                                    current_frame_time.datetime.month,
                                                    current_frame_time.datetime.day,
                                                    current_frame_time.datetime.hour,
-                                                   current_frame_time.datetime.minute)
+                                                   current_frame_time.datetime.minute,
+                                                   current_frame_time.datetime.second)
         # File name has been modified.
         if new_file_name in file_name:
             continue
