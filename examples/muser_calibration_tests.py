@@ -110,7 +110,7 @@ if __name__ == "__main__":
                         npvalue.append(numpy.float32(value[i]))
                     sundisk_dict[linekey] = numpy.array(npvalue)
                 else:
-                    return sundisk_dict````
+                    return sundisk_dict
         finally:
             sundisk_file.close()
     
