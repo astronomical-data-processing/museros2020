@@ -127,7 +127,9 @@ class MuserData(MuserFrame):
         for file in self.file_list:
             if file_name in file:
                 return muser_data_path(file)
-        return ''
+
+        print("Cannot find observational data or not a MUSER file.")
+        exit(1)
 
     def check_next_file(self):
         '''
