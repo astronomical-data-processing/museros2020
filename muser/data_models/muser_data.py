@@ -237,7 +237,8 @@ class MuserData(MuserFrame):
                 if search_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
                     break
             if self.current_frame_time == self.file_end_time:
-                self.open_next_file(1)
+                if not self.open_next_file(1):
+                    return False
 
         log.debug('Frame located.')
         self.skip_frames(0)
@@ -326,12 +327,14 @@ class MuserData(MuserFrame):
                         frame = frame + 1
                         current_time = self.current_frame_time
                     if self.current_frame_time == self.file_end_time:
-                        self.open_next_file(1)
+                        if not self.open_next_file(1):
+                            return False
                 else:
                     break
             else:
                 if self.current_frame_time == self.file_end_time:
-                    self.open_next_file(1)
+                    if not self.open_next_file(1):
+                        return False
                 if not self.read_one_frame():
                     return False
                 if read_data:
