@@ -9,6 +9,8 @@ import copy
 import matplotlib
 from rascil.processing_components import create_named_configuration
 import argparse
+import logging
+
 
 # from matplotlib import plt.savefig
 from astropy.coordinates import EarthLocation, SkyCoord, ITRS, AltAz
@@ -91,6 +93,21 @@ def create_configuration(name: str = 'LOWBD2', **kwargs):
 
 
 def main(args):
+    if len(args.log)>0 or (args.log is not None):
+        log = logging.getLogger('muser')
+        log.setLevel(level=logging.DEBUG)
+        logging.basicConfig(format='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s',
+                            level=logging.DEBUG)
+        console = logging.StreamHandler()
+        console.setLevel(logging.DEBUG)
+
+        fh = logging.FileHandler(args.log,mode='w')
+        fh.setLevel(logging.DEBUG)
+
+        # 为logger对象添加句柄
+        log.addHandler(console)
+        log.addHandler(fh)
+
     if args.muser == 1:
         muser_array = 'MUSER1'
     else:
@@ -241,6 +258,7 @@ def main(args):
     print("Done. ")
 
 if __name__ == '__main__':
+
     import argparse
 
     parser = argparse.ArgumentParser(description='Output Measurement Set Files')
@@ -251,4 +269,6 @@ if __name__ == '__main__':
     parser.add_argument('-e', "--end", type=str, default='', help='The end time ')
     parser.add_argument('-t', "--fringe", type=str2bool, nargs = '?', const=True, default=False, help='Fringe Stop')
     parser.add_argument('-o', "--output", type=str, default='', help='The output file name')
+    parser.add_argument('-l', "--log", type=str, default='', help='The output log file name')
+
     main(parser.parse_args())
