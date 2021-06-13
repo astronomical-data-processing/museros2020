@@ -93,7 +93,7 @@ def create_configuration(name: str = 'LOWBD2', **kwargs):
 
 
 def main(args):
-    if len(args.log)>0 or (args.log is not None):
+    if len(args.log)>0:
         log = logging.getLogger('muser')
         log.setLevel(level=logging.DEBUG)
         logging.basicConfig(format='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s',

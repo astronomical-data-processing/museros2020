@@ -9,6 +9,7 @@ from muser.components.io.muser_data_read import MuserDataReader
 from muser.data_models.muser_data import MuserData
 import logging
 import os
+from sys import exit
 
 log = logging.getLogger('logger')
 
@@ -21,6 +22,8 @@ def list_muser_data(args):
     if not muser.open_data_file():
         print("Cannot find observational data or not a MUSER file.")
         exit(1)
+    # Skip frames
+    muser.skip_frames(args.skip)
     # Read first Frame
     muser.read_one_frame()
     # Locate a specified frame
@@ -43,5 +46,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='List Muser Data Information for Each Frame')
     parser.add_argument('-f', "--file", type=str, default='', help='The file name')
     parser.add_argument('-l', "--line", type=int, default=1, help='The number of frames')
+    parser.add_argument('-s', "--skip", type=int, default=0, help='The number of frames skipped')
 
     list_muser_data(parser.parse_args())
