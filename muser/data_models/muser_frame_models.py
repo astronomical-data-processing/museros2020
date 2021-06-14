@@ -10,6 +10,7 @@ import numpy
 import math
 import struct
 
+
 from muser.data_models.muser_data_models import MuserBase, MuserFrameHeader
 from muser.data_models.muser_delay_models import MuserDelay
 from muser.data_models.parameters import (
