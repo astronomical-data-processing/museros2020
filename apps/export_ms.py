@@ -93,8 +93,8 @@ def create_configuration(name: str = 'LOWBD2', **kwargs):
 
 
 def main(args):
+    log = logging.getLogger('muser')
     if len(args.log)>0:
-        log = logging.getLogger('muser')
         log.setLevel(level=logging.DEBUG)
         logging.basicConfig(format='%(asctime)s - %(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s',
                             level=logging.DEBUG)
@@ -254,9 +254,12 @@ def main(args):
     bvis.vis[...] = copy.deepcopy(vis_data[...])
     vis_list = []
     vis_list.append(bvis)
+
     # Output results
     if len(args.output)==0:
-        export_file_name = muser_output_path(data_file_name) + '.ms'
+        output_time = Time(start_time, format='isot').datetime
+        file_name = 'CSRH_'+ str(output_time.year) + str(output_time.month) + str(output_time.day) + '-' + str(output_time.hour) + str(output_time.minute) + str(output_time.second)
+        export_file_name = muser_output_path(file_name) + '.ms'   #data_file_name
     else:
         export_file_name = muser_output_path(args.output) + '.ms'
     export_blockvisibility_to_ms(export_file_name, vis_list, source_name='SUN')
