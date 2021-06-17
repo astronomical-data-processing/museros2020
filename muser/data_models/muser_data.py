@@ -278,7 +278,7 @@ class MuserData(MuserFrame):
                     break
             else:
                 if self.is_loop_mode and self.start_date_time <= self.current_frame_time \
-                        and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
+                        and self.sub_band == 0 and self.polarization == 1:  # Find file in previous 1 minute
                     self.first_frame_time = self.current_frame_time
                     break
                 if self.is_loop_mode == False and self.start_date_time <= self.current_frame_time:
