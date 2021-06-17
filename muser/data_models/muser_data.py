@@ -234,7 +234,7 @@ class MuserData(MuserFrame):
                 if self.start_date_time <= self.current_frame_time:
                     break
             else:
-                if search_time <= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
+                if search_time >= self.current_frame_time and self.sub_band == 0 and self.polarization == 0:  # Find file in previous 1 minute
                     break
             if self.current_frame_time == self.file_end_time:
                 if not self.open_next_file(1):
@@ -303,6 +303,7 @@ class MuserData(MuserFrame):
             total_frames = self.frame_number * self.polarization_number
             if self.is_loop_mode:
                 frame = 0
+                current_time = self.current_frame_time
                 while frame < total_frames:
                     log.info("Reading No. %d %s %d %d" % (
                         frame, self.current_frame_time.isot, self.sub_band,
@@ -312,11 +313,8 @@ class MuserData(MuserFrame):
                     log.debug("Frame time:{} {} {}".format(self.current_frame_time, self.sub_band,self.polarization))
                     if read_data:
                         self.read_one_data_for_full()
-                    if frame == 0:
-                        current_time = self.current_frame_time
                     # print(self.current_frame_time, current_time, self.sub_band, self.polarization,
                     #       (self.current_frame_time - self.first_frame_time).to_value('s'))
-
                     if (self.current_frame_time - current_time).to_value('s') >= 4 / 1000.:
                         log.info("Find frame lost or missing.")
                         if self.search_frame(self.current_frame_time.isot):

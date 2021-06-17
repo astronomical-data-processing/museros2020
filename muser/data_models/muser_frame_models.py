@@ -452,21 +452,21 @@ class MuserFrame(MuserBase):
         # Initialized data reading buffer for first time ONCE
         if not self.is_data_buffer_initialized:
             self.init_data_buffer()
-        log.debug(
-            "Read header info - time: %s - array:%d band:%d polization:%d frequence:%d"
-            % (
-                self.current_frame_time.isot,
-                self.real_sub_array,
-                self.sub_band,
-                self.polarization,
-                self.frequency,
-            )
-        )
+        # log.debug(
+        #     "Read header info - time: %s - array:%d band:%d polization:%d frequence:%d"
+        #     % (
+        #         self.current_frame_time.isot,
+        #         self.real_sub_array,
+        #         self.sub_band,
+        #         self.polarization,
+        #         self.frequency,
+        #     )
+        # )
         return True
 
     def read_data(self):
         if self.sub_array == 1:
-            log.debug("Read data current pos %d" % self.in_file.tell())
+            # log.debug("Read data current pos %d" % self.in_file.tell())
             self.in_file.seek(2752, 1)
 
             for channel in range(0, self.sub_channels, 2):
@@ -626,7 +626,7 @@ class MuserFrame(MuserBase):
                         self.in_file.seek(8, 1)
                 self.in_file.seek(72, 1)
 
-        log.debug("Read visibility  and auto correlation data.")
+        # log.debug("Read visibility  and auto correlation data.")
         return True
 
     def read_one_file(self):  # data in the same channe: 780*2400
