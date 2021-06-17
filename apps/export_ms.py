@@ -181,10 +181,10 @@ def main(args):
     if not muser.search_first_file(frame_time=args.start):
         print("Cannot find observational data or not a MUSER file.")
         return -1
-    if not muser.search_frame(args.start):
+    if not muser.search_frame(search_time=start_time):
         print("Cannot locate the specified frame")
         return -1
-
+    log.info("Search file : {}".format(start_time))
     count = 0
     # total_frames = 1
     if muser.is_loop_mode:
