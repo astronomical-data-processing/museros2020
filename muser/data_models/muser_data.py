@@ -112,7 +112,7 @@ class MuserData(MuserFrame):
         return True
 
     def open_next_file(self, time_minute=1):
-        search_date_time = self.current_frame_time + time_minute * u.minute
+        search_date_time = self.file_first_time + time_minute * u.minute
 
         full_file_name = self.muser_data_file_name(search_date_time.datetime.year,
                                                    search_date_time.datetime.month,
@@ -194,16 +194,18 @@ class MuserData(MuserFrame):
         '''
         search first frame with proper date and time
         '''
+        log.info("Search frame: {}".format(search_time))
         self.in_file.seek(0, 0)
         if not self.read_one_frame():
             return False
-        self.start_date_time = Time(search_time, format='isot')
         if search_time > self.file_end_time:
             if not self.open_next_file(1):
                 return False
         if search_time < self.file_first_time:
             if not self.open_next_file(-1):
                 return False
+
+        self.start_date_time = Time(search_time, format='isot')
 
         if search_time < self.current_frame_time:
             t_offset = self.current_frame_time - self.start_date_time
