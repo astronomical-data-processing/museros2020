@@ -115,6 +115,10 @@ def main(args):
     start_time = args.start
     end_time = args.end
     fringe = args.fringe
+    if args.nolimit==0:
+        nolimit = None
+    else:
+        nolimit = args.nolimit
 
     location = EarthLocation(lon=115.2505 * u.deg, lat=42.211833333 * u.deg, height=1365.0 * u.m)
 
@@ -236,6 +240,7 @@ def main(args):
                                       channel_bandwidth=channelbandwidth,
                                       integration_time=integration_time,
                                       source='SUN',
+                                      elevation_limit=nolimit,
                                       utc_time=utc_times)
     else:
         bvis = create_blockvisibility(muser_core, times, frequency, phasecentre=phasecentre,
@@ -243,6 +248,7 @@ def main(args):
                                       channel_bandwidth=channelbandwidth,
                                       integration_time=integration_time,
                                       source='SUN',
+                                      elevation_limit=nolimit,
                                       utc_time=utc_times)
     bvis.data['vis'] = copy.deepcopy(vis_data)
     bvis.vis[...] = copy.deepcopy(vis_data[...])
@@ -270,5 +276,6 @@ if __name__ == '__main__':
     parser.add_argument('-t', "--fringe", type=str2bool, nargs = '?', const=True, default=False, help='Fringe Stop')
     parser.add_argument('-o', "--output", type=str, default='', help='The output file name')
     parser.add_argument('-l', "--log", type=str, default='', help='The output log file name')
+    parser.add_argument('-n', "--nolimit", type=int, default=15, help='No limitation for the elevation')
 
     main(parser.parse_args())
