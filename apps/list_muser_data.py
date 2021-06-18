@@ -16,9 +16,10 @@ log = logging.getLogger('logger')
 def list_muser_data(args):
     loop_number = args.line
     data_file_name = args.file
+    sub_array = args.muser
     # data_file_name = 'CSRH_20151122-093500_89058131'
     file_name = muser_data_path(data_file_name)
-    muser = MuserData(sub_array = 1, file_name = file_name)
+    muser = MuserData(sub_array = sub_array, file_name = file_name)
     if not muser.open_data_file():
         print("Cannot find observational data or not a MUSER file.")
         exit(1)
@@ -44,6 +45,7 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description='List Muser Data Information for Each Frame')
+    parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
     parser.add_argument('-f', "--file", type=str, default='', help='The file name')
     parser.add_argument('-l', "--line", type=int, default=1, help='The number of frames')
     parser.add_argument('-s', "--skip", type=int, default=0, help='The number of frames skipped')
