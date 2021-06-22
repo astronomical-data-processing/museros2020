@@ -23,8 +23,9 @@ log = logging.getLogger('muser')
 
 
 class Phase:
-    def __init__(self, sub_array=None, start_time=None, end_time=None, output_file=None, fringe=False):
+    def __init__(self, sub_array=None, mode = True, start_time=None, end_time=None, output_file=None, fringe=False):
         self.sub_array = sub_array
+        self.mode = mode
         self.data_source = 0
         if start_time is not None:
             self.start_time = start_time
@@ -41,7 +42,7 @@ class Phase:
         self.fringe_stop = fringe
 
     def calibration(self):
-        muser_calibration = MuserData(sub_array=self.sub_array)
+        muser_calibration = MuserData(sub_array=self.sub_array, mode=self.mode)
         log.info('Reading Visibility Data of calibration......')
         if not muser_calibration.init_data_environment():
             print("No data environment prepared, exit.")
@@ -82,7 +83,7 @@ class Phase:
             else:
                 total_frames = muser_calibration.count_frame_number(self.start_time, self.end_time)
             self.block_full_data = numpy.zeros(
-                [muser_calibration.antennas, muser_calibration.antennas, muser_calibration.channels],
+                [muser_calibration.antennas, muser_calibration.antennas, muser_calibration.sub_channels],
                 dtype='complex')
 
         # Re-Search file
@@ -149,12 +150,13 @@ def export_phase(args):
     muser = args.muser
     start = args.start
     end_time = args.end
+    mode = args.pattern
     if len(args.output) != 0:
         output_file = args.output
     else:
         output_file = None
     fringe = args.fringe
-    cal = Phase(sub_array=muser, start_time =start, end_time =end_time, output_file =output_file, fringe=fringe)
+    cal = Phase(sub_array=muser, mode = mode, start_time =start, end_time =end_time, output_file =output_file, fringe=fringe)
     cal.calibration()
 
 
@@ -163,6 +165,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='List Muser Data Information for Each Frame')
     parser.add_argument('-m', "--muser", type=int, default=1, help='The MUSER array')
+    parser.add_argument('-p', "--pattern", type=int, default=True, help='observational mode')
     parser.add_argument('-s', "--start", type=str, default=None, help='The beginning time')
     parser.add_argument('-e', "--end", type=str, default=None, help='The end time')
     parser.add_argument('-f', "--fringe", type=bool, default=False, help='Fringe Stop')

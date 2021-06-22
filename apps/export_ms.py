@@ -210,8 +210,9 @@ def main(args):
             obs_time = muser.first_frame_utc_time + 0.0125 * u.second
         else:
             obs_time = muser.first_frame_utc_time + 0.0015625 * u.second
+
         utc_times.append(obs_time)
-        print("No.{} : Observation time (UTC) {}".format(count,obs_time))
+        print("No.{} : Observation time (UTC) {}".format(count, obs_time))
         # Compute the position of the Sun
         Alpha, Delta, ha, Thete_z, Phi = get_sun(obs_time)
 
@@ -219,17 +220,21 @@ def main(args):
         integration_time.append(0.025)
 
         phasecentre = SkyCoord(ra=Alpha * u.deg, dec=Delta * u.deg, frame='icrs', equinox='J2000')
-
         # visshape = [ntimes, nants, nants, nchan, npol]
-        utc_time = Time('%04d-%02d-%2dT00:00:00' % (
+        utc_time = Time('%04d-%02d-%02dT00:00:00' % (
             muser.current_frame_utc_time.datetime.year, muser.current_frame_utc_time.datetime.month,
             muser.current_frame_utc_time.datetime.day), format='isot')
         # Phase Calibration
+
         muser.phase_calibration(phase_cal.phase_data)
 
         # Inject data into blockvisibility
-        vis_data[count, :, :, :, 1] = deepcopy(muser.block_full_data[:, :, :, 0])
-        vis_data[count, :, :, :, 0] = deepcopy(muser.block_full_data[:, :, :, 1])
+        if muser.is_loop_mode:
+            vis_data[count, :, :, :, 1] = deepcopy(muser.block_full_data[:, :, :, 0])
+            vis_data[count, :, :, :, 0] = deepcopy(muser.block_full_data[:, :, :, 1])
+        else:
+            vis_data[count, :, :, :, 0] = deepcopy(muser.block_full_data[:, :, :,0])
+
         count = count + 1
 
     times = numpy.array(times)
@@ -258,7 +263,7 @@ def main(args):
     # Output results
     if len(args.output)==0:
         output_time = Time(start_time, format='isot').datetime
-        file_name = 'CSRH_'+ str(output_time.year) + str(output_time.month) + str(output_time.day) + '-' + str(output_time.hour) + str(output_time.minute) + str(output_time.second)
+        file_name = 'CSRH_%04d%02d%02d-%02d%02d%02d'%(output_time.year, output_time.month, output_time.day, output_time.hour, output_time.minute, output_time.second)
         export_file_name = muser_output_path(file_name) + '.ms'   #data_file_name
     else:
         export_file_name = muser_output_path(args.output) + '.ms'

@@ -410,12 +410,12 @@ class MuserFrame(MuserBase):
                 self.in_file.seek(-6, 1)
 
         self.sub_band = self.channel_group // 16
-        if self.is_loop_mode and self.sub_band == 0 and self.polarization == 0:
-            self.first_frame_time = self.current_frame_time
-            self.first_frame_utc_time = self.first_frame_time - 8 * u.hour
-
-        elif self.is_loop_mode == False:
-            self.first_frame_time = self.current_frame_time
+        # if self.is_loop_mode and self.sub_band == 0 and self.polarization == 1:
+        #     self.first_frame_time = self.current_frame_time
+        #     self.first_frame_utc_time = self.first_frame_time - 8 * u.hour
+        #
+        # elif self.is_loop_mode == False:
+        #     self.first_frame_utc_time = self.current_frame_time - 8 * u.hour
 
         if self.version == True:
             obs_target = struct.unpack("H", self.in_file.read(2))[
@@ -531,15 +531,11 @@ class MuserFrame(MuserBase):
         elif self.sub_array == 2:
             self.in_file.seek(1692, 1)  # 1690 reserve and 2bytes frequency code
             visbility = numpy.zeros(
-                shape=(self.dr_output_antennas * (self.dr_output_antennas - 1) / 2),
-                dtype=complex,
+                shape=(self.dr_output_antennas * (self.dr_output_antennas - 1) // 2),
+                dtype=complex
             )
-            for channel in range(
-                0, self.sub_channels
-            ):  # read data of all antennas in one channel
-                for bl_len in range(
-                    0, self.dr_output_antennas * (self.dr_output_antennas - 1) / 2, 2
-                ):
+            for channel in range(0, self.sub_channels):  # read data of all antennas in one channel
+                for bl_len in range(0, self.dr_output_antennas * (self.dr_output_antennas - 1) // 2, 2):
                     buff = self.in_file.read(12)
                     c1, c2 = self.convert_cross_correlation(buff)
                     visbility[bl_len] = c2
@@ -547,19 +543,17 @@ class MuserFrame(MuserBase):
 
                 bl1, bl2 = 0, 0
                 for antenna1 in range(0, self.antennas - 1):
-                    for antenna2 in range(antenna1 + 1, self.dr_output_antennas):
-                        if antenna2 < self.antennas:
-                            self.block_data[antenna1, antenna2, channel] = visbility[
-                                bl2
-                            ]
-                            self.block_data[antenna2, antenna1, channel] = numpy.conj(
-                                visbility[bl2]
-                            )
-                            bl1 += 1
+                    for antenna2 in range(antenna1 + 1, self.antennas):
+                        # if antenna2 < self.antennas:
+                        self.block_data[antenna1, antenna2, channel] = visbility[bl2]
+                        self.block_data[antenna2, antenna1, channel] = numpy.conj(visbility[bl2])
+                        # bl1 += 1
                         bl2 += 1
 
                 newch = channel % 2
                 for antenna in range(0, 8):
+                    if antenna == 7 and newch ==1:
+                        break
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
                     self.block_data[
