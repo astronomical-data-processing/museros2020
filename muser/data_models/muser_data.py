@@ -473,28 +473,55 @@ class MuserData(MuserFrame):
             parameter = 12.5
             delay = self.par_delay
 
-        delay_real = delay[0:self.antennas]
-        [delay_x, delay_y] = numpy.meshgrid(delay_real, delay_real)
-        delay_matrix = delay_x - delay_y
-        delay_matrix_int = numpy.ceil(delay_x) - numpy.ceil(delay_y)
+        for channel in range(0, self.sub_channels):
+            for antenna1 in range(0, self.antennas - 1):  #SubChannelsLow = 16
+                for antenna2 in range(antenna1 + 1, self.antennas):
+                    tg = delay[antenna2] - delay[antenna1]
+                    tg0 = int(delay[antenna2]) - int(delay[antenna1])
+                    if self.sub_array == 1:
+                        Frf = (self.frequency*1e-6 + channel * 25 + parameter) / 1000.0
+                        Fif = (channel * 25 + parameter + 50.0) / 1000.0
+                        phai = 2 * numpy.pi * (Frf * tg - Fif * tg0)
+                        self.block_data[antenna1][antenna2][channel] = complex(
+                            self.block_data[antenna1][antenna2][channel].real * math.cos(phai) +
+                            self.block_data[antenna1][antenna2][channel].imag * math.sin(phai),
+                            self.block_data[antenna1][antenna2][channel].imag * math.cos(phai) -
+                            self.block_data[antenna1][antenna2][channel].real * math.sin(phai))
+                    else:
+                        Frf = (self.frequency*1e-6 + (15- channel) * 25 + parameter) / 1000.0
+                        Fif = self.frequency*1e-9 + 0.45  # local frequency(GHz)
+                        phai = 2 * numpy.pi * Fif * tg0 + 2 * numpy.pi * Frf * (tg - tg0)
+                        self.block_data[antenna1][antenna2][channel] = complex(
+                            self.block_data[antenna1][antenna2][channel].real * math.cos(phai) +
+                            self.block_data[antenna1][antenna2][channel].imag *(-1) * math.sin(phai),
+                            self.block_data[antenna1][antenna2][channel].imag *(-1) * math.cos(phai) -
+                            self.block_data[antenna1][antenna2][channel].real * math.sin(phai))
 
-        if self.is_loop_mode:
-            freq = (numpy.arange(self.start_frequency, self.end_frequency, 25) + parameter) / 1000.
-            freq_interval = numpy.repeat((numpy.arange(0, self.sub_channels) * 25 + parameter + 50) / 1000., 4)
-        else:
-            freq = (numpy.arange(self.start_frequency, self.end_frequency, 25) + parameter) / 1000.
-            freq_interval = (numpy.arange(0, self.sub_channels) * 25 + parameter + 50) / 1000.
-        phai1 = numpy.einsum('ij,kl->ijk', delay_matrix, freq.reshape(-1, 1))
-        phai2 = numpy.einsum('ij,kl->ijk', delay_matrix_int, freq_interval.reshape(-1, 1))
-        phai_block = 2 * numpy.pi * (phai1 - phai2)
-
-        for pol in range(self.real_polarization_number):
-            real = self.block_full_data[:, :, :, pol].real * numpy.cos(phai_block) + self.block_full_data[:, :, :,
-                                                                                     pol].imag * numpy.sin(phai_block)
-            imag = self.block_full_data[:, :, :, pol].imag * numpy.cos(phai_block) - self.block_full_data[:, :, :,
-                                                                                     pol].real * numpy.sin(phai_block)
-            self.block_full_data[:, :, :, pol] = numpy.vectorize(complex)(real, imag)
+        #museros2020
+        # delay_real = delay[0:self.antennas]
+        # [delay_x, delay_y] = numpy.meshgrid(delay_real, delay_real)
+        # delay_matrix = delay_x - delay_y
+        # delay_matrix_int = numpy.ceil(delay_x) - numpy.ceil(delay_y)
         #
+        # if self.is_loop_mode:
+        #     freq = (numpy.arange(self.start_frequency, self.end_frequency, 25) + parameter) / 1000.
+        #     freq_interval = numpy.repeat((numpy.arange(0, self.sub_channels) * 25 + parameter + 50) / 1000., 4)
+        # else:
+        #     freq = (numpy.arange(self.start_frequency, self.end_frequency, 25) + parameter) / 1000.
+        #     freq_interval = (numpy.arange(0, self.sub_channels) * 25 + parameter + 50) / 1000.
+        # phai1 = numpy.einsum('ij,kl->ijk', delay_matrix, freq.reshape(-1, 1))
+        # phai2 = numpy.einsum('ij,kl->ijk', delay_matrix_int, freq_interval.reshape(-1, 1))
+        # phai_block = 2 * numpy.pi * (phai1 - phai2)
+        #
+        # for pol in range(self.real_polarization_number):
+        #     real = self.block_full_data[:, :, :, pol].real * numpy.cos(phai_block) + self.block_full_data[:, :, :,
+        #                                                                              pol].imag * numpy.sin(phai_block)
+        #     imag = self.block_full_data[:, :, :, pol].imag * numpy.cos(phai_block) - self.block_full_data[:, :, :,
+        #                                                                              pol].real * numpy.sin(phai_block)
+        #     self.block_full_data[:, :, :, pol] = numpy.vectorize(complex)(real, imag)
+        #
+
+
         # print(phai_block[11,10,0])
         # for count in range(self.real_frame_number):
         #     for channel in range(0, self.sub_channels):
