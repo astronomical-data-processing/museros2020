@@ -334,6 +334,7 @@ class MuserData(MuserFrame):
                     return False
             if not self.read_one_frame():
                 return False
+            self.first_frame_time = self.current_frame_time
             self.first_frame_utc_time = self.current_frame_time - 8 * u.hour
             # if self.current_frame_time >= time_end:
             #     break
@@ -477,8 +478,12 @@ class MuserData(MuserFrame):
         delay_matrix = delay_x - delay_y
         delay_matrix_int = numpy.ceil(delay_x) - numpy.ceil(delay_y)
 
-        freq = (numpy.arange(self.start_frequency, self.end_frequency, 25) + parameter) / 1000.
-        freq_interval = numpy.repeat((numpy.arange(0, self.sub_channels) * 25 + parameter + 50) / 1000., 4)
+        if self.is_loop_mode:
+            freq = (numpy.arange(self.start_frequency, self.end_frequency, 25) + parameter) / 1000.
+            freq_interval = numpy.repeat((numpy.arange(0, self.sub_channels) * 25 + parameter + 50) / 1000., 4)
+        else:
+            freq = (numpy.arange(self.start_frequency, self.end_frequency, 25) + parameter) / 1000.
+            freq_interval = (numpy.arange(0, self.sub_channels) * 25 + parameter + 50) / 1000.
         phai1 = numpy.einsum('ij,kl->ijk', delay_matrix, freq.reshape(-1, 1))
         phai2 = numpy.einsum('ij,kl->ijk', delay_matrix_int, freq_interval.reshape(-1, 1))
         phai_block = 2 * numpy.pi * (phai1 - phai2)

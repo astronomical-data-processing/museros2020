@@ -83,7 +83,7 @@ class Phase:
             else:
                 total_frames = muser_calibration.count_frame_number(self.start_time, self.end_time)
             self.block_full_data = numpy.zeros(
-                [muser_calibration.antennas, muser_calibration.antennas, muser_calibration.sub_channels],
+                [muser_calibration.antennas, muser_calibration.antennas, muser_calibration.sub_channels,1],
                 dtype='complex')
 
         # Re-Search file
@@ -120,7 +120,7 @@ class Phase:
             if muser_calibration.is_loop_mode:
                 self.block_full_data[:, :, :] += muser_calibration.block_full_data[:, :, :]
             else:
-                self.block_full_data[:, :, :] += muser_calibration.block_data[:, :, :]
+                self.block_full_data[:, :, :] += muser_calibration.block_full_data[:, :, :]
             count = count + 1
             # bl = 0
             # for antenna1 in range(0, muser_calibration.antennas - 1):
