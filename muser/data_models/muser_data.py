@@ -489,12 +489,13 @@ class MuserData(MuserFrame):
                             self.block_data[antenna1][antenna2][channel].real * math.sin(phai))
                     else:
                         Frf = (self.frequency*1e-6 + (15- channel) * 25 + parameter) / 1000.0
-                        Fif = self.frequency*1e-9 + 0.45  # local frequency(GHz)
-                        phai = 2 * numpy.pi * Fif * tg0 + 2 * numpy.pi * Frf * (tg - tg0)
+                        Fif = (channel*25 + parameter + 50.0)/1000
+                        phai = 2 * numpy.pi * (-Frf*tg - Fif * tg0)
+
                         self.block_data[antenna1][antenna2][channel] = complex(
                             self.block_data[antenna1][antenna2][channel].real * math.cos(phai) +
-                            self.block_data[antenna1][antenna2][channel].imag *(-1) * math.sin(phai),
-                            self.block_data[antenna1][antenna2][channel].imag *(-1) * math.cos(phai) -
+                            self.block_data[antenna1][antenna2][channel].imag * math.sin(phai),
+                            self.block_data[antenna1][antenna2][channel].imag * math.cos(phai) -
                             self.block_data[antenna1][antenna2][channel].real * math.sin(phai))
 
         #museros2020

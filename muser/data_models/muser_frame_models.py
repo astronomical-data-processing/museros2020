@@ -541,70 +541,38 @@ class MuserFrame(MuserBase):
                     visbility[bl_len] = c2
                     visbility[bl_len + 1] = c1
 
-                bl1, bl2 = 0, 0
+                bl = 0
                 for antenna1 in range(0, self.antennas - 1):
-                    for antenna2 in range(antenna1 + 1, self.antennas):
-                        # if antenna2 < self.antennas:
-                        self.block_data[antenna1, antenna2, channel] = visbility[bl2]
-                        self.block_data[antenna2, antenna1, channel] = numpy.conj(visbility[bl2])
-                        # bl1 += 1
-                        bl2 += 1
+                    for antenna2 in range(antenna1 + 1, self.dr_output_antennas):
+                        if antenna2 < self.antennas:
+                            self.block_data[antenna1, antenna2, channel] = visbility[bl]
+                            self.block_data[antenna2, antenna1, channel] = numpy.conj(visbility[bl])
+                            bl += 1
 
                 newch = channel % 2
                 for antenna in range(0, 8):
                     if antenna == 7 and newch ==1:
+                        self.in_file.seek(64, 1)
                         break
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
-                    self.block_data[
-                        0 + antenna * 8 + newch * 4,
-                        0 + antenna * 8 + newch * 4,
-                        0 + channel - newch,
-                    ] = r1
-                    self.block_data[
-                        0 + antenna * 8 + newch * 4,
-                        0 + antenna * 8 + newch * 4,
-                        1 + channel - newch,
-                    ] = r2
+                    self.block_data[0 + antenna * 8 + newch * 4, 0 + antenna * 8 + newch * 4, 0 + channel - newch] = r1
+                    self.block_data[0 + antenna * 8 + newch * 4, 0 + antenna * 8 + newch * 4, 1 + channel - newch] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
-                    self.block_data[
-                        1 + antenna * 8 + newch * 4,
-                        1 + antenna * 8 + newch * 4,
-                        0 + channel - newch,
-                    ] = r1
-                    self.block_data[
-                        1 + antenna * 8 + newch * 4,
-                        1 + antenna * 8 + newch * 4,
-                        1 + channel - newch,
-                    ] = r2
+                    self.block_data[1 + antenna * 8 + newch * 4, 1 + antenna * 8 + newch * 4, 0 + channel - newch] = r1
+                    self.block_data[1 + antenna * 8 + newch * 4, 1 + antenna * 8 + newch * 4, 1 + channel - newch] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
-                    self.block_data[
-                        2 + antenna * 8 + newch * 4,
-                        2 + antenna * 8 + newch * 4,
-                        0 + channel - newch,
-                    ] = r1
-                    self.block_data[
-                        2 + antenna * 8 + newch * 4,
-                        2 + antenna * 8 + newch * 4,
-                        1 + channel - newch,
-                    ] = r2
+                    self.block_data[2 + antenna * 8 + newch * 4, 2 + antenna * 8 + newch * 4, 0 + channel - newch] = r1
+                    self.block_data[2 + antenna * 8 + newch * 4, 2 + antenna * 8 + newch * 4, 1 + channel - newch] = r2
 
                     buff1 = self.in_file.read(8)
                     r1, r2 = self.convert_auto_correlation(buff1)
-                    self.block_data[
-                        3 + antenna * 8 + newch * 4,
-                        3 + antenna * 8 + newch * 4,
-                        0 + channel - newch,
-                    ] = r1
-                    self.block_data[
-                        3 + antenna * 8 + newch * 4,
-                        3 + antenna * 8 + newch * 4,
-                        1 + channel - newch,
-                    ] = r2
+                    self.block_data[3 + antenna * 8 + newch * 4, 3 + antenna * 8 + newch * 4, 0 + channel - newch] = r1
+                    self.block_data[3 + antenna * 8 + newch * 4, 3 + antenna * 8 + newch * 4, 1 + channel - newch] = r2
 
                     self.in_file.seek(32, 1)
                     if channel == 14 or channel == 15:
