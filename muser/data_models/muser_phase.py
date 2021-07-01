@@ -46,7 +46,18 @@ class MuserPhase(object):
             file_name = muser_calibration_path("MUSER%1d-%04d%02d%02d.CAL" % (self.sub_array, year, month, day))
 
         import os
-        if os.path.isfile(file_name):
+        if year == 2014 and month == 12 and day == 17:
+            with open(file_name, 'r') as file:
+                while True:
+                    line = file.readline()
+                    if not line:
+                        break
+                    pol, ant1, ant2, phase_Cal = int(line.split()[0]), int(line.split()[1]), int(line.split()[2]), line.split()[3]
+                    self.phase_data[0, ant1, ant2, : , pol] = numpy.repeat([complex(phase_Cal)], self.sub_channels * self.frame_number)
+            log.debug("Load Calibrated data.")
+            return True
+
+        elif os.path.isfile(file_name):
             caldata = numpy.fromfile(file_name, dtype=complex)
             if self.is_loop_mode:
                 self.phase_data = caldata.reshape(1, self.antennas, self.antennas, self.sub_channels * self.frame_number, 2)
