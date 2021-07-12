@@ -42,11 +42,11 @@ class MuserPhase(object):
 
         # self.phase_data = numpy.zeros((4, 2, self.antennas * (self.antennas - 1) // 2, 16), dtype='complex')
 
-    def load_calibration_data(self, file_name=None):
+    def load_calibration_data(self, file_name=''):
 
         # if self.last_calibration_priority == self.calibration_priority and self.last_date_time.day == self.start_date_time.day and self.last_date_time.month == self.start_date_time.month and self.last_date_time.year == self.start_date_time.year and self.last_sub_array == self.sub_array:
         #     return
-        if file_name is None:
+        if file_name == '':
             year = self.obs_date.datetime.year
             month = self.obs_date.datetime.month
             day = self.obs_date.datetime.day

@@ -145,7 +145,7 @@ def main(args):
 
     # Load Phase Calibration Data
     print("Loading Phase Calibration File")
-    phase_cal = MuserPhase(muser.sub_array, muser.is_loop_mode, muser.current_frame_time)
+    phase_cal = MuserPhase(muser.sub_array, muser.is_loop_mode, muser.current_frame_time, args.calib)
     if not phase_cal.load_calibration_data(file_name=args.calib):
         print("Cannot find phase calibration file. ")
         exit(1)
