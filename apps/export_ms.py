@@ -146,7 +146,7 @@ def main(args):
     # Load Phase Calibration Data
     print("Loading Phase Calibration File")
     phase_cal = MuserPhase(muser.sub_array, muser.is_loop_mode, muser.current_frame_time)
-    if not phase_cal.load_calibration_data():
+    if not phase_cal.load_calibration_data(file_name=args.calib):
         print("Cannot find phase calibration file. ")
         exit(1)
 
@@ -226,7 +226,10 @@ def main(args):
             muser.current_frame_utc_time.datetime.day), format='isot')
         # Phase Calibration
 
-        muser.phase_calibration(phase_cal.phase_data)
+        if args.calib is None:
+            muser.phase_calibration(cal=phase_cal.phase_data)
+        else:
+            muser.phase_calibration(phai_sat=phase_cal.phase_data)
 
         # Inject data into blockvisibility
         if muser.is_loop_mode:

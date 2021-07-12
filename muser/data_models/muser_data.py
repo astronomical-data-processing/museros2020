@@ -289,9 +289,7 @@ class MuserData(MuserFrame):
     def read_one_data_for_full(self, ):
         self.read_data()
         from copy import deepcopy
-        self.block_full_data[:, :,
-        self.real_sub_band * self.sub_channels: self.real_sub_band * self.sub_channels + 16,
-        self.real_polarization] = deepcopy(self.block_data[:, :, :])
+        self.block_full_data[:, :, self.real_sub_band * self.sub_channels: self.real_sub_band * self.sub_channels + 16, self.real_polarization] = deepcopy(self.block_data[:, :, :])
 
     def read_full_frame(self, search=True, read_data=False, time_end = None):
         index = 1
@@ -570,14 +568,19 @@ class MuserData(MuserFrame):
                 break
         return count
 
-    def phase_calibration(self, cal):
+    def phase_calibration(self, cal=None, phai_sat=None):
         log.debug("Satellite phase correction")
         # cal = cal.reshape(self.block_full_data.shape)
         if self.sub_array == 1:
             amplitude = abs(self.block_full_data)
             phai_sun = numpy.arctan2(self.block_full_data.imag, self.block_full_data.real)
-            phai_sat = numpy.arctan2(cal.imag[0, ...], cal.real[0, ...])
-            phai = phai_sun - phai_sat
+            if phai_sat is not None:
+                # phai_sat = numpy.arctan2(cal.imag[0, ...], cal.real[0, ...])
+                phai = phai_sun - phai_sat
+            else:
+                phai_sat = numpy.arctan2(cal.imag[0, ...], cal.real[0, ...])
+                phai = phai_sun - phai_sat
             real = amplitude * numpy.cos(-phai)
             imag = amplitude * numpy.sin(-phai)
-            self.block_full_data = numpy.vectorize(complex)(real, imag)
+            self.block_full_data = numpy.vectorize(complex)(real, imag)[0]
+
