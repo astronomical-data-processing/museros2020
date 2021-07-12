@@ -15,7 +15,7 @@ log = logging.getLogger('muser')
 
 
 class MuserPhase(object):
-    def __init__(self, sub_array=1, loop_mode=True, obs_date: Time = Time('2015-01-01T00:00:00', format='isot')):
+    def __init__(self, sub_array=1, loop_mode=True, obs_date: Time = Time('2015-01-01T00:00:00', format='isot'), cal=''):
         self.sub_array = sub_array
         self.obs_date = obs_date
         self.is_loop_mode = loop_mode
@@ -28,10 +28,17 @@ class MuserPhase(object):
             muser_para[self.sub_array - 1]
         self.sub_channels = 16
         if loop_mode:
-            self.phase_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels * self.frame_number, 2),
+            if cal == '':
+                self.phase_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels * self.frame_number, 2),
                                           dtype='complex')
+            else:
+                self.phase_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels * self.frame_number, 2),
+                                              dtype='float')
         else:
-            self.phase_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels, 1), dtype='complex')
+            if cal == '':
+                self.phase_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels, 1), dtype='complex')
+            else:
+                self.phase_data = numpy.zeros((1, self.antennas, self.antennas, self.sub_channels, 1), dtype='float')
 
         # self.phase_data = numpy.zeros((4, 2, self.antennas * (self.antennas - 1) // 2, 16), dtype='complex')
 
