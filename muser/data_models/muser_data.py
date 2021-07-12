@@ -576,11 +576,11 @@ class MuserData(MuserFrame):
         phai_sun = numpy.arctan2(self.block_full_data.imag, self.block_full_data.real)
         if phai_sat is not None:
             # phai_sat = numpy.arctan2(cal.imag[0, ...], cal.real[0, ...])
-            phai = phai_sun - phai_sat
+            phai = phai_sun - phai_sat[0]
         else:
             phai_sat = numpy.arctan2(cal.imag[0, ...], cal.real[0, ...])
             phai = phai_sun - phai_sat
-        real = amplitude * numpy.cos(-phai)
-        imag = amplitude * numpy.sin(-phai)
-        self.block_full_data = numpy.vectorize(complex)(real, imag)[0]
+        real = amplitude * numpy.cos(phai)
+        imag = amplitude * numpy.sin(phai)
+        self.block_full_data = numpy.vectorize(complex)(real, imag)
 
