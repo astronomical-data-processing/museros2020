@@ -71,8 +71,9 @@ class MuserPhase(object):
                     line = file.readline()
                     if not line:
                         break
-                    pol, ant1, ant2, phase_Cal = int(line.split()[0]), int(line.split()[1]), int(line.split()[2]), line.split()[3]
+                    pol, ant1, ant2, phase_Cal = int(line.split()[0]), int(line.split()[1]), int(line.split()[2]), float(line.split()[3])
                     self.phase_data[0, ant1, ant2, : , pol] = numpy.repeat(phase_Cal, self.sub_channels * self.frame_number)
+                    self.phase_data[0, ant2, ant1, : , pol] = numpy.repeat(-phase_Cal, self.sub_channels * self.frame_number)
 
             log.debug("Load Calibrated data.")
             return True
