@@ -226,7 +226,7 @@ def main(args):
             muser.current_frame_utc_time.datetime.day), format='isot')
         # Phase Calibration
 
-        if args.calib is None:
+        if args.calib == '':
             muser.phase_calibration(cal=phase_cal.phase_data)
         else:
             muser.phase_calibration(phai_sat=phase_cal.phase_data)
